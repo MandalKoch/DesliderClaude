@@ -116,4 +116,5 @@ DesliderClaude.slnx
 - Decided: async swipe voting, Game Night model with link-invite, Blazor Web App (unified) + PWA, .NET Aspire, SQLite. Hosting TBD.
 - Share codes: Haikunator-generated `adjective-noun-NNNN` (e.g. `autumn-frog-1234`) on `GameNight.ShareCode`, unique indexed.
 - Sample data: share code `sample-night`, three voters (Alice, Bob, Cara), six games, a mix of pre-swiped votes.
-- Next step: PWA manifest + service worker, first Blazor pages (host creates a Game Night, voter joins via share link, swipe UI, live ranking).
+- Voter flow live: `/night/{shareCode}` join (sets per-Night cookie), `/night/{shareCode}/swipe` iterates through games with yes/no, `/night/{shareCode}/ranking` shows a meta-refresh live ranking. All three pages are static SSR (no SignalR circuit yet) — swipe uses form POSTs + Blazor enhanced navigation so the transitions feel smooth without full reloads.
+- Next step: host flow (create a Game Night page + host dashboard with close button); then PWA manifest + service worker; then SignalR to replace the 5-second meta-refresh on the ranking page.

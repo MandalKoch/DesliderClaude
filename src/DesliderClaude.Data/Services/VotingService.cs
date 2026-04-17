@@ -64,4 +64,15 @@ internal sealed class VotingService : IVotingService
             .ThenBy(r => r.Name)
             .ToListAsync(ct);
     }
+
+    public async Task<VoterProgress?> GetProgressAsync(string voterToken, CancellationToken ct = default)
+    {
+        var voter = await _db.Voters
+            .Include(v => v.Swipes)
+            .FirstOrDefaultAsync(v => v.VoterToken == voterToken, ct);
+        if (voter is null) return null;
+
+        var swipes = voter.Swipes.ToDictionary(s => s.GameId, s => s.Yes);
+        return new VoterProgress(voter.Id, voter.GameNightId, voter.DisplayName, swipes);
+    }
 }

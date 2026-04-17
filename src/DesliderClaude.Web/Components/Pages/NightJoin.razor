@@ -1,0 +1,103 @@
+@page "/night/{ShareCode}"
+@using DesliderClaude.Core.Entities
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
+@inject IVotingService Voting
+@inject NavigationManager Nav
+
+<PageTitle>@(_night?.Name ?? "Game Night")</PageTitle>
+
+@if (_night is null)
+{
+    <h1>Not found</h1>
+    <p>That Game Night link doesn't match anything. Double-check the URL.</p>
+    <p><a href="/">Back home</a></p>
+}
+else if (_night.IsClosed)
+{
+    <h1>@_night.Name</h1>
+    <p>Voting on this Game Night is closed.</p>
+    <p><a href="/night/@ShareCode/ranking">See the final ranking →</a></p>
+}
+else
+{
+    <h1>@_night.Name</h1>
+    <p>@_night.Games.Count games on the list. Enter your name to start swiping.</p>
+
+    <form method="post" @formname="join" @onsubmit="JoinAsync">
+        <AntiforgeryToken />
+        <label>
+            Your name
+            <input name="Form.DisplayName" value="@(Form?.DisplayName ?? _prefill)" maxlength="40" required autofocus />
+        </label>
+        <button type="submit">Start swiping →</button>
+    </form>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger">@_error</p>
+    }
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [SupplyParameterFromForm] public JoinFormModel? Form { get; set; }
+
+    private GameNight? _night;
+    private string? _error;
+    private string _prefill = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _night = await GameNights.GetByShareCodeAsync(ShareCode);
+        if (_night is null || HttpContext is null) return;
+
+        var existingToken = HttpContext.Request.Cookies[VoterCookie.Name(ShareCode)];
+        if (!string.IsNullOrEmpty(existingToken))
+        {
+            var progress = await Voting.GetProgressAsync(existingToken);
+            if (progress?.GameNightId == _night.Id)
+            {
+                _prefill = progress.DisplayName;
+            }
+        }
+    }
+
+    private async Task JoinAsync()
+    {
+        if (_night is null || _night.IsClosed || HttpContext is null) return;
+
+        var name = Form?.DisplayName?.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            _error = "Please enter a name.";
+            return;
+        }
+
+        var cookieName = VoterCookie.Name(ShareCode);
+        var token = HttpContext.Request.Cookies[cookieName];
+        if (string.IsNullOrEmpty(token))
+        {
+            token = VoterCookie.NewToken();
+            HttpContext.Response.Cookies.Append(cookieName, token, VoterCookie.Options);
+        }
+
+        try
+        {
+            await Voting.JoinAsync(_night.Id, name, token);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+            return;
+        }
+
+        Nav.NavigateTo($"/night/{ShareCode}/swipe");
+    }
+
+    public sealed class JoinFormModel
+    {
+        public string DisplayName { get; set; } = string.Empty;
+    }
+}

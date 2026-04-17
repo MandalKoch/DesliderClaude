@@ -10,6 +10,8 @@ builder.Services.AddDesliderData(
     builder.Configuration.GetConnectionString("DesliderClaudeDb")
     ?? throw new InvalidOperationException("Missing connection string 'DesliderClaudeDb'."));
 
+builder.Services.AddHttpContextAccessor();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()

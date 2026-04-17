@@ -1,7 +1,46 @@
-﻿@page "/"
+@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>DesliderClaude</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>🎲 DesliderClaude</h1>
+<p><em>Swipe. Rank. Play.</em></p>
 
-Welcome to your new app.
+<p>
+    The async way to decide which boardgame your group plays tonight. Enter a share code you've been sent,
+    or try the sample Game Night below.
+</p>
+
+<form method="post" @formname="gotonight" @onsubmit="GoToNight">
+    <AntiforgeryToken />
+    <label>
+        Share code
+        <input name="Form.ShareCode" value="@(Form?.ShareCode)" placeholder="autumn-frog-1234" required />
+    </label>
+    <button type="submit">Go →</button>
+</form>
+
+<hr />
+
+<p>
+    <strong>Don't have a code?</strong> Run the <em>Reset &amp; seed sample data</em> command in the Aspire
+    dashboard, then jump into <a href="/night/sample-night">the sample Game Night</a>.
+</p>
+
+@code {
+    [SupplyParameterFromForm] public GoForm? Form { get; set; }
+    [Inject] public NavigationManager Nav { get; set; } = default!;
+
+    private void GoToNight()
+    {
+        var code = Form?.ShareCode?.Trim();
+        if (!string.IsNullOrEmpty(code))
+        {
+            Nav.NavigateTo($"/night/{Uri.EscapeDataString(code)}");
+        }
+    }
+
+    public sealed class GoForm
+    {
+        public string ShareCode { get; set; } = string.Empty;
+    }
+}
