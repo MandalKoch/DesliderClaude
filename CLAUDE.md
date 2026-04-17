@@ -104,7 +104,7 @@ DesliderClaude.slnx
 - EF Core migrations checked in. Never edit an applied migration — add a new one.
 - Keep session/voting logic in `Core` (pure, testable), not in Blazor components.
 - Blazor components inject and call **`Core` service interfaces**; they never touch `DbContext` directly. `Data` is an implementation detail behind those interfaces.
-- **README.md is kept in sync.** After any change (feature plan edits, tech stack changes, structure changes, status updates), re-read `README.md` and update it to match. **Always verify `README.md` is still valid before any `git commit` or `git push`** — the README is the public face of the repo and must not drift from `CLAUDE.md`.
+- **`README.md` is the public marketing page, not a mirror of this file.** It describes what DesliderClaude *is* to end users — the product story, how it feels to use. Only update `README.md` when the product story itself changes (new user-facing concept, rename, repositioning). Architecture / structure / convention / status changes stay in `CLAUDE.md` and do **not** require a README update.
 
 ## Status
 
