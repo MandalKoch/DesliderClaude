@@ -1,4 +1,4 @@
-using DesliderClaude.Core.Entities;
+using DesliderClaude.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

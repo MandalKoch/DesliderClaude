@@ -1,8 +1,8 @@
-using DesliderClaude.Core.Entities;
+using DesliderClaude.Core.Models;
 using DesliderClaude.Core.Services;
 using Microsoft.EntityFrameworkCore;
 
-namespace DesliderClaude.Data.Services;
+namespace DesliderClaude.Data.Services.Imps;
 
 internal sealed class VotingService : IVotingService
 {

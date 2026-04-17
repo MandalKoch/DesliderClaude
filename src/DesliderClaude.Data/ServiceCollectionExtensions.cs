@@ -1,5 +1,6 @@
 using DesliderClaude.Core.Services;
-using DesliderClaude.Data.Services;
+using DesliderClaude.Core.Services.Imps;
+using DesliderClaude.Data.Services.Imps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

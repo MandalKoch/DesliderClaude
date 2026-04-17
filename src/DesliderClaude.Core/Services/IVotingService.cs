@@ -1,4 +1,4 @@
-using DesliderClaude.Core.Entities;
+using DesliderClaude.Core.Models;
 
 namespace DesliderClaude.Core.Services;
 

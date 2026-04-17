@@ -1,4 +1,4 @@
-namespace DesliderClaude.Core.Services;
+namespace DesliderClaude.Core.Models;
 
 public sealed record VoterProgress(
     Guid VoterId,

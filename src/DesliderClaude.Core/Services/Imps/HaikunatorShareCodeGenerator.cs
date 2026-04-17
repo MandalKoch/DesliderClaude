@@ -1,6 +1,6 @@
 using HaikunatorLib = Haikunator.Haikunator;
 
-namespace DesliderClaude.Core.Services;
+namespace DesliderClaude.Core.Services.Imps;
 
 public sealed class HaikunatorShareCodeGenerator : IShareCodeGenerator
 {

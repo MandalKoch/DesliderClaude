@@ -1,4 +1,4 @@
-namespace DesliderClaude.Core.Entities;
+namespace DesliderClaude.Core.Models;
 
 public class Voter
 {

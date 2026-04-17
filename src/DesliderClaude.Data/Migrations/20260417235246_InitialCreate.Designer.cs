@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DesliderClaude.Data.Migrations
 {
     [DbContext(typeof(DesliderClaudeDbContext))]
-    [Migration("20260417232848_InitialCreate")]
+    [Migration("20260417235246_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace DesliderClaude.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.6");
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Game", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Game", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -41,7 +41,7 @@ namespace DesliderClaude.Data.Migrations
                     b.ToTable("Games");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.GameNight", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.GameNight", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -82,7 +82,7 @@ namespace DesliderClaude.Data.Migrations
                     b.ToTable("GameNights");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Swipe", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Swipe", b =>
                 {
                     b.Property<Guid>("VoterId")
                         .HasColumnType("TEXT");
@@ -103,7 +103,7 @@ namespace DesliderClaude.Data.Migrations
                     b.ToTable("Swipes");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Voter", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Voter", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -132,9 +132,9 @@ namespace DesliderClaude.Data.Migrations
                     b.ToTable("Voters");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Game", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Game", b =>
                 {
-                    b.HasOne("DesliderClaude.Core.Entities.GameNight", "GameNight")
+                    b.HasOne("DesliderClaude.Core.Models.GameNight", "GameNight")
                         .WithMany("Games")
                         .HasForeignKey("GameNightId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -143,15 +143,15 @@ namespace DesliderClaude.Data.Migrations
                     b.Navigation("GameNight");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Swipe", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Swipe", b =>
                 {
-                    b.HasOne("DesliderClaude.Core.Entities.Game", "Game")
+                    b.HasOne("DesliderClaude.Core.Models.Game", "Game")
                         .WithMany("Swipes")
                         .HasForeignKey("GameId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DesliderClaude.Core.Entities.Voter", "Voter")
+                    b.HasOne("DesliderClaude.Core.Models.Voter", "Voter")
                         .WithMany("Swipes")
                         .HasForeignKey("VoterId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -162,9 +162,9 @@ namespace DesliderClaude.Data.Migrations
                     b.Navigation("Voter");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Voter", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Voter", b =>
                 {
-                    b.HasOne("DesliderClaude.Core.Entities.GameNight", "GameNight")
+                    b.HasOne("DesliderClaude.Core.Models.GameNight", "GameNight")
                         .WithMany("Voters")
                         .HasForeignKey("GameNightId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -173,19 +173,19 @@ namespace DesliderClaude.Data.Migrations
                     b.Navigation("GameNight");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Game", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Game", b =>
                 {
                     b.Navigation("Swipes");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.GameNight", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.GameNight", b =>
                 {
                     b.Navigation("Games");
 
                     b.Navigation("Voters");
                 });
 
-            modelBuilder.Entity("DesliderClaude.Core.Entities.Voter", b =>
+            modelBuilder.Entity("DesliderClaude.Core.Models.Voter", b =>
                 {
                     b.Navigation("Swipes");
                 });
