@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/DesliderClaude.AppHost/DesliderClaude.AppHost.csproj" />
+    <Project Path="src/DesliderClaude.Core/DesliderClaude.Core.csproj" />
+    <Project Path="src/DesliderClaude.Data/DesliderClaude.Data.csproj" />
     <Project Path="src/DesliderClaude.ServiceDefaults/DesliderClaude.ServiceDefaults.csproj" />
     <Project Path="src/DesliderClaude.Web.Client/DesliderClaude.Web.Client.csproj" />
     <Project Path="src/DesliderClaude.Web/DesliderClaude.Web.csproj" />

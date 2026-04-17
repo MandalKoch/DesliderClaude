@@ -1,9 +1,14 @@
+using DesliderClaude.Data;
 using DesliderClaude.Web.Client.Pages;
 using DesliderClaude.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+
+builder.Services.AddDesliderData(
+    builder.Configuration.GetConnectionString("DesliderClaudeDb")
+    ?? throw new InvalidOperationException("Missing connection string 'DesliderClaudeDb'."));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

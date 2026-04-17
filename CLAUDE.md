@@ -109,6 +109,7 @@ DesliderClaude.slnx
 
 ## Status
 
-**2026-04-18** — Scaffold pass 1 complete. Aspire `AppHost` + `ServiceDefaults` + Blazor Web App (`Web` server + `Web.Client` WASM) build green. `F5` on `AppHost` launches everything.
+**2026-04-18** — Scaffold pass 2 complete. `Core` (entities, service interfaces, `HaikunatorShareCodeGenerator`) and `Data` (EF Core SQLite `DbContext`, Fluent API configs, service impls) projects are wired into `Web` via `AddDesliderData(connectionString)`. Four entities (`GameNight`, `Game`, `Voter`, `Swipe`) and first migration `InitialCreate` checked in. Solution builds green.
 - Decided: async swipe voting, Game Night model with link-invite, Blazor Web App (unified) + PWA, .NET Aspire, SQLite. Hosting TBD.
-- Next step: add `Core` and `Data` class libraries, define the `GameNight` / `Game` / `Voter` / `Swipe` entities, first EF Core migration, and PWA manifest.
+- Share codes: Haikunator-generated `adjective-noun-NNNN` (e.g. `autumn-frog-1234`) on `GameNight.ShareCode`, unique indexed.
+- Next step: PWA manifest + service worker, first Blazor pages (host creates a Game Night, voter joins via share link, swipe UI, live ranking), Aspire wiring for the SQLite DB.

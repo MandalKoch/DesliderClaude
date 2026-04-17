@@ -8,9 +8,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.6">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <ProjectReference Include="..\DesliderClaude.Web.Client\DesliderClaude.Web.Client.csproj" />
     <ProjectReference Include="..\DesliderClaude.ServiceDefaults\DesliderClaude.ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesliderClaude.Core\DesliderClaude.Core.csproj" />
+    <ProjectReference Include="..\DesliderClaude.Data\DesliderClaude.Data.csproj" />
   </ItemGroup>
 
 </Project>
