@@ -1,5 +1,4 @@
 using DesliderClaude.Data;
-using DesliderClaude.Web.Client.Pages;
 using DesliderClaude.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
