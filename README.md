@@ -11,7 +11,7 @@
 ![Aspire](https://img.shields.io/badge/.NET-Aspire-8A2BE2?style=for-the-badge&logo=dotnet&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-Ready-FF6F00?style=for-the-badge&logo=pwa&logoColor=white)
-![Status](https://img.shields.io/badge/status-🚧%20kickoff-orange?style=for-the-badge)
+![Status](https://img.shields.io/badge/status-🛠️%20scaffold-yellow?style=for-the-badge)
 
 </div>
 
@@ -76,15 +76,16 @@ If we want App Store / Play Store later → **.NET MAUI Blazor Hybrid** wraps th
 ## 🗺️ Project Structure *(planned)*
 
 ```
-DesliderClaude.sln
+DesliderClaude.slnx
 ├── 🎛️  src/
-│   ├── DesliderClaude.AppHost/            # Aspire orchestrator — F5 here
-│   ├── DesliderClaude.ServiceDefaults/    # Telemetry, health, service discovery
-│   ├── DesliderClaude.Web/                # Blazor Web App (UI + server + SignalR)
-│   ├── DesliderClaude.Data/               # EF Core, migrations, entities
-│   └── DesliderClaude.Core/               # Domain models & voting logic
+│   ├── DesliderClaude.AppHost/            # Aspire orchestrator — F5 here ✅
+│   ├── DesliderClaude.ServiceDefaults/    # Telemetry, health, service discovery ✅
+│   ├── DesliderClaude.Web/                # Blazor Web App — server host ✅
+│   ├── DesliderClaude.Web.Client/         # Blazor WASM client ✅
+│   ├── DesliderClaude.Data/               # EF Core, migrations, entities 🚧
+│   └── DesliderClaude.Core/               # Domain models & voting logic 🚧
 └── 🧪 tests/
-    └── DesliderClaude.Tests/
+    └── DesliderClaude.Tests/              # 🚧
 ```
 
 ---
@@ -95,15 +96,16 @@ DesliderClaude.sln
 - ⚙️ `async` / `await` everywhere for I/O — **no** `.Result` / `.Wait()`
 - 📜 EF Core migrations checked in; never edit an applied one — add a new one
 - 🧠 Keep voting logic in `Core` (pure, testable) — not in Blazor components
+- 🔌 Blazor components inject **`Core` service interfaces** — they **never** touch `DbContext` directly. `Data` sits behind those interfaces.
 
 ---
 
 ## 🚧 Status
 
-**📅 2026-04-18 — Project kickoff.** Just the `.sln` so far.
+**📅 2026-04-18 — Scaffold pass 1 ✅.** Aspire `AppHost` + `ServiceDefaults` + Blazor Web App (server + WASM client) build green. `F5` on `AppHost` brings everything up.
 
 ✅ **Decided:** async swipe voting, Game Night model with link-invite, Blazor Web App + PWA, .NET Aspire, SQLite
-⏭️ **Next:** scaffold Aspire `AppHost` + `ServiceDefaults` + Blazor Web App, PWA manifest, first EF Core migration for `GameNight` / `Game` / `Voter` / `Swipe`
+⏭️ **Next:** `Core` + `Data` class libraries, `GameNight` / `Game` / `Voter` / `Swipe` entities, first EF Core migration, PWA manifest
 ❓ **Hosting:** TBD
 
 ---

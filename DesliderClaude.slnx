@@ -1,2 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DesliderClaude.AppHost/DesliderClaude.AppHost.csproj" />
+    <Project Path="src/DesliderClaude.ServiceDefaults/DesliderClaude.ServiceDefaults.csproj" />
+    <Project Path="src/DesliderClaude.Web.Client/DesliderClaude.Web.Client.csproj" />
+    <Project Path="src/DesliderClaude.Web/DesliderClaude.Web.csproj" />
+  </Folder>
 </Solution>

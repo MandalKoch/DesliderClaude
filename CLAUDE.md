@@ -85,15 +85,16 @@ TBD — decide later.
 Aspire-standard layout:
 
 ```
-DesliderClaude.sln
+DesliderClaude.slnx
 ├── src/
 │   ├── DesliderClaude.AppHost/            # Aspire orchestrator — run this with F5
 │   ├── DesliderClaude.ServiceDefaults/    # Shared Aspire defaults (telemetry, health, service discovery)
-│   ├── DesliderClaude.Web/                # Blazor Web App (UI + server + optional SignalR hubs)
-│   ├── DesliderClaude.Data/               # EF Core, migrations, entities
-│   └── DesliderClaude.Core/               # Domain models & Game Night / voting logic
+│   ├── DesliderClaude.Web/                # Blazor Web App — server host (UI + optional SignalR hubs)
+│   ├── DesliderClaude.Web.Client/         # Blazor WASM client (Auto-interactive components)
+│   ├── DesliderClaude.Data/               # EF Core, migrations, entities (planned)
+│   └── DesliderClaude.Core/               # Domain models & Game Night / voting logic (planned)
 └── tests/
-    └── DesliderClaude.Tests/
+    └── DesliderClaude.Tests/              # (planned)
 ```
 
 ## Conventions
@@ -102,10 +103,11 @@ DesliderClaude.sln
 - `async`/`await` everywhere for I/O. No `.Result` / `.Wait()`.
 - EF Core migrations checked in. Never edit an applied migration — add a new one.
 - Keep session/voting logic in `Core` (pure, testable), not in Blazor components.
+- Blazor components inject and call **`Core` service interfaces**; they never touch `DbContext` directly. `Data` is an implementation detail behind those interfaces.
 - **README.md is kept in sync.** After any change (feature plan edits, tech stack changes, structure changes, status updates), re-read `README.md` and update it to match. **Always verify `README.md` is still valid before any `git commit` or `git push`** — the README is the public face of the repo and must not drift from `CLAUDE.md`.
 
 ## Status
 
-**2026-04-18** — Project kicked off. Only the `.sln` exists.
+**2026-04-18** — Scaffold pass 1 complete. Aspire `AppHost` + `ServiceDefaults` + Blazor Web App (`Web` server + `Web.Client` WASM) build green. `F5` on `AppHost` launches everything.
 - Decided: async swipe voting, Game Night model with link-invite, Blazor Web App (unified) + PWA, .NET Aspire, SQLite. Hosting TBD.
-- Next step: scaffold Aspire `AppHost` + `ServiceDefaults` + Blazor Web App, add PWA manifest, define the `GameNight` / `Game` / `Voter` / `Swipe` entities and first EF Core migration.
+- Next step: add `Core` and `Data` class libraries, define the `GameNight` / `Game` / `Voter` / `Swipe` entities, first EF Core migration, and PWA manifest.
