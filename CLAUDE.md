@@ -104,6 +104,7 @@ DesliderClaude.slnx
 - EF Core migrations checked in. Never edit an applied migration — add a new one.
 - Keep session/voting logic in `Core` (pure, testable), not in Blazor components.
 - Blazor components inject and call **`Core` service interfaces**; they never touch `DbContext` directly. `Data` is an implementation detail behind those interfaces.
+- **Generate Guids with `Guid.CreateVersion7()`** (RFC 9562 UUID v7), never `Guid.NewGuid()` (v4). v7 is time-ordered, so inserts preserve B-tree index locality and IDs are chronologically sortable. Applies to every entity PK and any other Guid we mint.
 - **`README.md` is the public marketing page, not a mirror of this file.** It describes what DesliderClaude *is* to end users — the product story, how it feels to use. Only update `README.md` when the product story itself changes (new user-facing concept, rename, repositioning). Architecture / structure / convention / status changes stay in `CLAUDE.md` and do **not** require a README update.
 
 ## Status
