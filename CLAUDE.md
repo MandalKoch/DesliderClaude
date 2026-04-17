@@ -1,0 +1,111 @@
+# DesliderClaude
+
+A public-facing web app that helps a group of friends decide **which boardgame to play on a given night**.
+
+Not a rating/review site. Think Tinder-style swipes collected asynchronously over hours or days, with a live ranking the host locks in when it's time to play.
+
+## Goal
+
+A host creates a **Game Night**, shares a link, and friends swipe on the candidate games whenever they have a minute. When the host closes voting, everyone sees the ranking and picks from the top.
+
+## Core Voting Mode
+
+**MVP = Swipe ("Tinder" style), async.**
+- Each person swipes yes/no on each candidate game, at their own pace.
+- Ranking = games sorted by yes-count. Top of the ranking is the pick; the rest is fallback / discussion material.
+- **Later:** Tournament bracket mode as a second option for bigger libraries / more dramatic picks.
+
+## Game Night Model
+
+- A host creates a **Game Night** (name, optional target date, candidate game list).
+- Host picks the candidate games (host-only for MVP; invitee suggestions later).
+- Host shares a **link**. Anyone with the link can vote — no account required, just a display name.
+- Friends swipe whenever they're ready, over hours or days. They can **change their swipes** until the host closes voting.
+- **Results are visible** to anyone with the link as votes come in — live ranking updates while the Game Night is open.
+- Host closes voting → ranking is finalized and locked in.
+- Game Nights are persisted — history of past nights is browsable by the host.
+
+## Tech Stack
+
+- **.NET 10**
+- **.NET Aspire** for local dev orchestration, service discovery, health checks, and OpenTelemetry out of the box. Adds an `AppHost` project that launches everything with one F5, and a `ServiceDefaults` project for shared cross-cutting config.
+- **Blazor Web App** (unified server + WASM rendering modes, .NET 8+ style) — picked over standalone Blazor WASM because we need a server anyway for SQLite, and the unified model is simpler.
+- **PWA** (manifest + service worker) so users can "Add to Home Screen" and get an app-like experience without app store distribution.
+- **SQLite** for storage (plenty for this; revisit later if needed).
+- **Entity Framework Core** for data access.
+- **SignalR** — optional for MVP. Live ranking can start as polling every few seconds; upgrade to SignalR in v1 for smoother real-time updates.
+- **Auth:** lightweight — host creates a Game Night behind a simple host identity (TBD: cookie-based host token, or basic OAuth). Voters just enter a display name.
+
+### Future: Native App Path
+
+If we later want App Store / Play Store presence, the path is **.NET MAUI Blazor Hybrid** — it wraps the same Blazor components in a native shell, so most of the MVP code carries over.
+
+## Hosting
+
+TBD — decide later.
+
+## Open Questions
+
+1. **Host identity:** cookie-based host token (simple, no login) vs. lightweight OAuth (GitHub/Google) for the host account. Voters stay anonymous (display name only).
+2. **Game library source:** manual entry first. BoardGameGeek API integration later for autofill/cover images.
+3. **Ranking tie-breaker:** if two games have the same yes-count, how do we order them? (Earliest-added wins? Random? Let the host nudge?)
+4. **Anonymous swipes:** can anyone with the link vote as many "identities" as they want? For friends this is fine; for true public we'd need at least a per-browser vote limit. Defer until we decide how public "public" is.
+
+## Feature Plan
+
+### MVP — async "Game Night"
+- [ ] Host creates a Game Night (name, optional date, candidate games), gets a share link
+- [ ] Anyone with the link lands on a join page, enters a display name
+- [ ] Swipe UI: voter swipes yes/no through the candidate list, can change swipes until close
+- [ ] Live ranking page: anyone with the link sees current ranking and vote counts, updating as swipes come in
+- [ ] Host dashboard: sees who has voted, can close voting
+- [ ] On close: ranking is locked/final
+
+### v1
+- [ ] Game library (reusable across Game Nights) with name, image, player count, play time
+- [ ] Host can mark a game as played (removes it from future Game Night candidate lists, or flags it so it's deprioritized)
+- [ ] BoardGameGeek scraping/API integration for autofill (name, cover, player count, play time)
+- [ ] Live "X people have voted" via SignalR
+- [ ] Tournament bracket mode
+- [ ] Game Night history for host
+- [ ] Filters: "only games for 4+ players", "under 60 min", etc.
+
+### v2
+- [ ] OAuth login for hosts (GitHub/Google) — replaces the lightweight host token
+- [ ] Admin role + admin panel (site-wide: manage users, Game Nights, games)
+- [ ] OpenTelemetry metrics dashboard visible to admin (request rates, active Game Nights, swipe volume, errors)
+
+### Later
+- [ ] Invitee-suggested games
+- [ ] Multiple groups / private groups
+- [ ] Stats: which games win most often, who votes yes on what
+
+## Project Structure (planned)
+
+Aspire-standard layout:
+
+```
+DesliderClaude.sln
+├── src/
+│   ├── DesliderClaude.AppHost/            # Aspire orchestrator — run this with F5
+│   ├── DesliderClaude.ServiceDefaults/    # Shared Aspire defaults (telemetry, health, service discovery)
+│   ├── DesliderClaude.Web/                # Blazor Web App (UI + server + optional SignalR hubs)
+│   ├── DesliderClaude.Data/               # EF Core, migrations, entities
+│   └── DesliderClaude.Core/               # Domain models & Game Night / voting logic
+└── tests/
+    └── DesliderClaude.Tests/
+```
+
+## Conventions
+
+- C# file-scoped namespaces, nullable enabled, implicit usings on.
+- `async`/`await` everywhere for I/O. No `.Result` / `.Wait()`.
+- EF Core migrations checked in. Never edit an applied migration — add a new one.
+- Keep session/voting logic in `Core` (pure, testable), not in Blazor components.
+- **README.md is kept in sync.** After any change (feature plan edits, tech stack changes, structure changes, status updates), re-read `README.md` and update it to match. **Always verify `README.md` is still valid before any `git commit` or `git push`** — the README is the public face of the repo and must not drift from `CLAUDE.md`.
+
+## Status
+
+**2026-04-18** — Project kicked off. Only the `.sln` exists.
+- Decided: async swipe voting, Game Night model with link-invite, Blazor Web App (unified) + PWA, .NET Aspire, SQLite. Hosting TBD.
+- Next step: scaffold Aspire `AppHost` + `ServiceDefaults` + Blazor Web App, add PWA manifest, define the `GameNight` / `Game` / `Voter` / `Swipe` entities and first EF Core migration.
