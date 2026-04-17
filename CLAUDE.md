@@ -89,13 +89,16 @@ DesliderClaude.slnx
 ├── src/
 │   ├── DesliderClaude.AppHost/            # Aspire orchestrator — run this with F5
 │   ├── DesliderClaude.ServiceDefaults/    # Shared Aspire defaults (telemetry, health, service discovery)
+│   ├── DesliderClaude.MigrationService/   # Worker: applies EF migrations on startup; POST /seed resets+seeds
 │   ├── DesliderClaude.Web/                # Blazor Web App — server host (UI + optional SignalR hubs)
 │   ├── DesliderClaude.Web.Client/         # Blazor WASM client (Auto-interactive components)
-│   ├── DesliderClaude.Data/               # EF Core, migrations, entities (planned)
-│   └── DesliderClaude.Core/               # Domain models & Game Night / voting logic (planned)
+│   ├── DesliderClaude.Data/               # EF Core DbContext, Fluent API configs, service impls
+│   └── DesliderClaude.Core/               # Domain entities, service interfaces, share-code generator
 └── tests/
     └── DesliderClaude.Tests/              # (planned)
 ```
+
+**MigrationService / seed flow:** `AppHost` boots `MigrationService` first with the shared SQLite connection string; the service applies any pending EF migrations on startup, then stays up to serve `POST /seed`. `Web` has `.WaitFor(migrations)`, so it only starts once the DB schema is ready. In the Aspire dashboard, the `migrations` resource carries a **"Reset & seed sample data"** command — it POSTs to the service's `/seed` endpoint, which wipes every table and inserts a sample Game Night (`sample-night` share code) so you can exercise the UI without clicking through a fresh setup.
 
 ## Conventions
 
@@ -109,7 +112,8 @@ DesliderClaude.slnx
 
 ## Status
 
-**2026-04-18** — Scaffold pass 2 complete. `Core` (entities, service interfaces, `HaikunatorShareCodeGenerator`) and `Data` (EF Core SQLite `DbContext`, Fluent API configs, service impls) projects are wired into `Web` via `AddDesliderData(connectionString)`. Four entities (`GameNight`, `Game`, `Voter`, `Swipe`) and first migration `InitialCreate` checked in. Solution builds green.
+**2026-04-18** — Scaffold pass 2 + migration service complete. `Core` / `Data` projects wired, four entities (`GameNight`, `Game`, `Voter`, `Swipe`) with `Guid.CreateVersion7()` PKs, first migration `InitialCreate` checked in. `MigrationService` applies migrations on startup and serves `POST /seed`; AppHost exposes a **"Reset & seed sample data"** command on the `migrations` resource in the Aspire dashboard. `Web` has `.WaitFor(migrations)`. Both services share a SQLite file under `%TEMP%/desliderclaude/`. Solution builds green.
 - Decided: async swipe voting, Game Night model with link-invite, Blazor Web App (unified) + PWA, .NET Aspire, SQLite. Hosting TBD.
 - Share codes: Haikunator-generated `adjective-noun-NNNN` (e.g. `autumn-frog-1234`) on `GameNight.ShareCode`, unique indexed.
-- Next step: PWA manifest + service worker, first Blazor pages (host creates a Game Night, voter joins via share link, swipe UI, live ranking), Aspire wiring for the SQLite DB.
+- Sample data: share code `sample-night`, three voters (Alice, Bob, Cara), six games, a mix of pre-swiped votes.
+- Next step: PWA manifest + service worker, first Blazor pages (host creates a Game Night, voter joins via share link, swipe UI, live ranking).
