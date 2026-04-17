@@ -112,4 +112,6 @@ DesliderClaude.sln
 
 *Made with 🎲, ☕, and way too many unplayed boardgames.*
 
+🤖 Coded with [Claude Code](https://claude.com/claude-code).
+
 </div>
