@@ -35,24 +35,29 @@ else
         <div class="swipe-progress">
             <span class="swipe-progress-label"><strong>@(_swipedCount + 1)</strong> / @_night.Games.Count</span>
             <span class="swipe-progress-bar">
-                <span class="swipe-progress-fill" style="width: @(((double)_swipedCount / _night.Games.Count) * 100)%"></span>
+                <span class="swipe-progress-fill" style="transform: scaleX(@(((double)_swipedCount / _night.Games.Count).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)))"></span>
             </span>
         </div>
 
-        <article class="swipe-card">
-            <div class="swipe-card-corners"></div>
-            <div class="swipe-card-label">candidate</div>
-            <h1 class="swipe-card-title">@_currentGame.Name</h1>
-        </article>
+        <div class="swipe-stage">
+            <article class="swipe-card" data-swipe-card>
+                <div class="swipe-card-corners"></div>
+                <div class="swipe-card-label">candidate</div>
+                <h1 class="swipe-card-title">@_currentGame.Name</h1>
+                <span class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">Deploy</span>
+                <span class="swipe-stamp swipe-stamp-no" data-swipe-overlay-no aria-hidden="true">Pass</span>
+            </article>
+            <p class="swipe-hint" aria-hidden="true">Drag the card · or use the buttons</p>
+        </div>
 
-        <form method="post" @formname="swipe" @onsubmit="RecordAsync">
+        <form method="post" @formname="swipe" @onsubmit="RecordAsync" data-swipe-form>
             <AntiforgeryToken />
             <input type="hidden" name="Form.GameId" value="@_currentGame.Id" />
             <div class="swipe-actions">
-                <button type="submit" name="Form.Yes" value="false" class="swipe-btn swipe-btn-no">
+                <button type="submit" name="Form.Yes" value="false" class="swipe-btn swipe-btn-no" data-swipe-no>
                     <span class="emoji" aria-hidden="true">✕</span>Pass
                 </button>
-                <button type="submit" name="Form.Yes" value="true" class="swipe-btn swipe-btn-yes">
+                <button type="submit" name="Form.Yes" value="true" class="swipe-btn swipe-btn-yes" data-swipe-yes>
                     <span class="emoji" aria-hidden="true">✓</span>Deploy
                 </button>
             </div>

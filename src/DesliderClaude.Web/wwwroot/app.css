@@ -59,6 +59,10 @@
     --radius:    12px;
     --radius-lg: 16px;
 
+    /* easing — strong custom curves (stock ease-* are too soft) */
+    --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
     /* angular card cut (top-right + bottom-left diagonals) — TI-style */
     --cut: 14px;
     --clip-card: polygon(
@@ -434,7 +438,7 @@ input:focus-visible {
     border: 1px solid var(--border-2);
     padding: 0.95rem 1.6rem;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease, box-shadow 0.2s ease, color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 160ms var(--ease-out), box-shadow 0.2s ease, color 0.15s ease;
     line-height: 1;
     text-decoration: none;
     clip-path: var(--clip-btn-right);
@@ -444,7 +448,7 @@ input:focus-visible {
     border-color: var(--border-strong);
     color: var(--text);
 }
-.btn:active, button:not(.unstyled):active { transform: scale(0.98); }
+.btn:active, button:not(.unstyled):active { transform: scale(0.97); }
 
 .btn-primary {
     background: linear-gradient(135deg, var(--gold), #d4883a);
@@ -514,9 +518,28 @@ input:focus-visible {
 .swipe-progress-fill {
     display: block;
     height: 100%;
+    width: 100%;
     background: linear-gradient(90deg, var(--cyan), var(--gold));
     box-shadow: 0 0 12px var(--cyan-glow);
-    transition: width 0.3s ease;
+    transform-origin: left center;
+    transform: scaleX(0);
+    transition: transform 320ms var(--ease-out);
+    will-change: transform;
+}
+
+.swipe-stage {
+    position: relative;
+}
+.swipe-hint {
+    margin: var(--s-3) 0 0;
+    text-align: center;
+    font-family: var(--font-hud);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: var(--text-dim);
+    font-weight: 600;
+    user-select: none;
 }
 
 .swipe-card {
@@ -534,7 +557,15 @@ input:focus-visible {
     -webkit-backdrop-filter: blur(18px);
     clip-path: var(--clip-card);
     overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    will-change: transform;
 }
+.swipe-card.is-dragging { cursor: grabbing; }
+.swipe-card.is-flinging { pointer-events: none; }
+@media (hover: none) { .swipe-card { cursor: default; } }
 .swipe-card::before {
     /* subtle planet-glow behind title */
     content: '';
@@ -596,6 +627,41 @@ input:focus-visible {
     z-index: 1;
 }
 
+/* drag stamps — faction-colored verdicts fading in with drag progress */
+.swipe-stamp {
+    position: absolute;
+    top: var(--s-5);
+    font-family: var(--font-hud);
+    font-weight: 700;
+    font-size: clamp(1.25rem, 4.5vw, 1.75rem);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    padding: 0.4rem 1rem 0.35rem;
+    border: 2px solid currentColor;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+    user-select: none;
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+    background: rgba(5, 8, 24, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.swipe-stamp-yes {
+    right: var(--s-5);
+    color: var(--cyan);
+    transform: rotate(-12deg);
+    text-shadow: 0 0 16px var(--cyan-glow);
+    box-shadow: 0 0 20px -2px var(--cyan-glow);
+}
+.swipe-stamp-no {
+    left: var(--s-5);
+    color: var(--crimson);
+    transform: rotate(12deg);
+    text-shadow: 0 0 16px var(--crimson-glow);
+    box-shadow: 0 0 20px -2px var(--crimson-glow);
+}
+
 .swipe-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -619,8 +685,9 @@ input:focus-visible {
     letter-spacing: 0.22em;
     padding: 1.15rem 1rem;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.25s ease, transform 0.08s ease, color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.25s ease, transform 160ms var(--ease-out), color 0.15s ease;
     line-height: 1;
+    touch-action: manipulation;
 }
 .swipe-btn:active { transform: scale(0.97); }
 .swipe-btn .emoji { font-size: 1.5rem; letter-spacing: 0; }
