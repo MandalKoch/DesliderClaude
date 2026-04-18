@@ -5,33 +5,38 @@
 @inject IVotingService Voting
 @inject NavigationManager Nav
 
-<PageTitle>@(_night?.Name ?? "Game Night")</PageTitle>
+<PageTitle>@(_night?.Name ?? "Game Night") — DesliderClaude</PageTitle>
 
 @if (_night is null)
 {
-    <h1>Not found</h1>
+    <h1>Not found.</h1>
     <p>That Game Night link doesn't match anything. Double-check the URL.</p>
-    <p><a href="/">Back home</a></p>
+    <p><a href="/">← Back home</a></p>
 }
 else if (_night.IsClosed)
 {
     <h1>@_night.Name</h1>
-    <p>Voting on this Game Night is closed.</p>
+    <div class="notice notice-closed">
+        <p><strong>Voting closed.</strong> The host locked in the pick.</p>
+    </div>
     <p><a href="/night/@ShareCode/ranking">See the final ranking →</a></p>
 }
 else
 {
+    <span class="mono">Game Night</span>
     <h1>@_night.Name</h1>
-    <p>@_night.Games.Count games on the list. Enter your name to start swiping.</p>
+    <p class="subtle">@_night.Games.Count games on the list. Enter a name to start swiping.</p>
 
-    <form method="post" @formname="join" @onsubmit="JoinAsync">
-        <AntiforgeryToken />
-        <label>
-            Your name
-            <input name="Form.DisplayName" value="@(Form?.DisplayName ?? _prefill)" maxlength="40" required autofocus />
-        </label>
-        <button type="submit">Start swiping →</button>
-    </form>
+    <div class="form-card">
+        <form method="post" @formname="join" @onsubmit="JoinAsync">
+            <AntiforgeryToken />
+            <label for="display-name">Your name</label>
+            <input id="display-name" name="Form.DisplayName" value="@(Form?.DisplayName ?? _prefill)" maxlength="40" autocomplete="nickname" required autofocus />
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Start swiping →</button>
+            </div>
+        </form>
+    </div>
 
     @if (!string.IsNullOrEmpty(_error))
     {

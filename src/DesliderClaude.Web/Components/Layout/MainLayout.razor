@@ -1,20 +1,21 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<header class="app-header">
+    <a class="app-brand" href="/">
+        <span class="dice" aria-hidden="true">🎲</span>
+        <span>Deslider<span class="mark">Claude</span></span>
+    </a>
+    <span class="app-header-tag">swipe · rank · play</span>
+</header>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+<main class="page">
+    @Body
+</main>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+<footer class="footer-meta">
+    <span>Made with 🎲 + ☕</span>
+    <span>a friend-group party app</span>
+</footer>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

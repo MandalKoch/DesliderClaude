@@ -1,29 +1,35 @@
 @page "/"
 
-<PageTitle>DesliderClaude</PageTitle>
+<PageTitle>DesliderClaude — Swipe. Rank. Play.</PageTitle>
 
-<h1>🎲 DesliderClaude</h1>
-<p><em>Swipe. Rank. Play.</em></p>
+<section class="hero">
+    <h1 class="hero-title">
+        <span class="dice" aria-hidden="true">🎲</span>Deslider<span class="line-2">Claude.</span>
+    </h1>
+    <span class="hero-tag">swipe · rank · play</span>
+    <p class="hero-lede">
+        The async way your friend group decides which boardgame gets played tonight —
+        no more forty-five minutes of <em>"so… what do you wanna play?"</em> while the pizza gets cold.
+    </p>
+</section>
 
-<p>
-    The async way to decide which boardgame your group plays tonight. Enter a share code you've been sent,
-    or try the sample Game Night below.
-</p>
-
-<form method="post" @formname="gotonight" @onsubmit="GoToNight">
-    <AntiforgeryToken />
-    <label>
-        Share code
-        <input name="Form.ShareCode" value="@(Form?.ShareCode)" placeholder="autumn-frog-1234" required />
-    </label>
-    <button type="submit">Go →</button>
-</form>
+<div class="form-card">
+    <form method="post" @formname="gotonight" @onsubmit="GoToNight">
+        <AntiforgeryToken />
+        <label for="share-code">Got a share code?</label>
+        <input id="share-code" name="Form.ShareCode" value="@(Form?.ShareCode)" placeholder="autumn-frog-1234" autocomplete="off" autocapitalize="off" spellcheck="false" required />
+        <div class="btn-row">
+            <button type="submit" class="btn btn-primary">Jump in →</button>
+        </div>
+    </form>
+</div>
 
 <hr />
 
-<p>
-    <strong>Don't have a code?</strong> Run the <em>Reset &amp; seed sample data</em> command in the Aspire
-    dashboard, then jump into <a href="/night/sample-night">the sample Game Night</a>.
+<p class="subtle">
+    <strong>No code yet?</strong> F5 the Aspire AppHost, run the
+    <em>Reset &amp; seed sample data</em> command on the <span class="mono">migrations</span> resource, then
+    try <a href="/night/sample-night">the sample Game Night</a>.
 </p>
 
 @code {

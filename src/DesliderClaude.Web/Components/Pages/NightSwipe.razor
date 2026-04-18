@@ -9,37 +9,55 @@
 
 @if (_night is null)
 {
-    <h1>Not found</h1>
-    <p><a href="/">Back home</a></p>
+    <h1>Not found.</h1>
+    <p><a href="/">← Back home</a></p>
 }
 else if (_voterToken is null)
 {
     <h1>@_night.Name</h1>
-    <p>You need to join before you can swipe.</p>
-    <p><a href="/night/@ShareCode">Enter your name →</a></p>
+    <div class="notice">
+        <p><strong>You need to join before you can swipe.</strong></p>
+        <p><a href="/night/@ShareCode">Enter your name →</a></p>
+    </div>
 }
 else if (_currentGame is null)
 {
-    <h1>All done, @(_progress?.DisplayName).</h1>
-    <p>You've swiped on every game in @_night.Name.</p>
-    <p><a href="/night/@ShareCode/ranking">See the live ranking →</a></p>
+    <span class="mono">All done</span>
+    <h1>Nice work, @(_progress?.DisplayName).</h1>
+    <p class="subtle">You've swiped on every game in @_night.Name. Swing by the ranking to see how the group's leaning.</p>
+    <div class="btn-row">
+        <a class="btn btn-primary" href="/night/@ShareCode/ranking">See the live ranking →</a>
+    </div>
 }
 else
 {
-    <p><small>@(_swipedCount + 1) of @_night.Games.Count</small></p>
+    <div class="swipe-wrap">
+        <div class="swipe-progress">
+            Game <strong>@(_swipedCount + 1)</strong> of <strong>@_night.Games.Count</strong>
+        </div>
 
-    <div class="swipe-card">
-        <h1>@_currentGame.Name</h1>
+        <article class="swipe-card">
+            <div class="swipe-card-label">tonight's candidate</div>
+            <h1 class="swipe-card-title">@_currentGame.Name</h1>
+        </article>
+
+        <form method="post" @formname="swipe" @onsubmit="RecordAsync">
+            <AntiforgeryToken />
+            <input type="hidden" name="Form.GameId" value="@_currentGame.Id" />
+            <div class="swipe-actions">
+                <button type="submit" name="Form.Yes" value="false" class="swipe-btn swipe-btn-no">
+                    <span class="emoji" aria-hidden="true">👎</span>Nope
+                </button>
+                <button type="submit" name="Form.Yes" value="true" class="swipe-btn swipe-btn-yes">
+                    <span class="emoji" aria-hidden="true">👍</span>Heck yes
+                </button>
+            </div>
+        </form>
+
+        <div class="swipe-footlinks">
+            <a href="/night/@ShareCode/ranking">Peek at the ranking →</a>
+        </div>
     </div>
-
-    <form method="post" @formname="swipe" @onsubmit="RecordAsync">
-        <AntiforgeryToken />
-        <input type="hidden" name="Form.GameId" value="@_currentGame.Id" />
-        <button type="submit" name="Form.Yes" value="false" class="swipe-no">👎 No</button>
-        <button type="submit" name="Form.Yes" value="true" class="swipe-yes">👍 Yes</button>
-    </form>
-
-    <p><a href="/night/@ShareCode/ranking">Peek at the current ranking →</a></p>
 }
 
 @code {
@@ -94,25 +112,3 @@ else
         public bool Yes { get; set; }
     }
 }
-
-<style>
-    .swipe-card {
-        border: 2px solid #5C2D91;
-        border-radius: 16px;
-        padding: 3rem 1.5rem;
-        text-align: center;
-        margin: 1.5rem 0;
-        background: linear-gradient(135deg, #f8f5ff 0%, #ffffff 100%);
-    }
-    .swipe-card h1 { margin: 0; font-size: 2.5rem; }
-    .swipe-no, .swipe-yes {
-        font-size: 1.5rem;
-        padding: 1rem 2rem;
-        border-radius: 12px;
-        border: none;
-        cursor: pointer;
-        margin: 0 0.5rem;
-    }
-    .swipe-no { background: #fde8e8; color: #a11; }
-    .swipe-yes { background: #e8fde8; color: #171; }
-</style>

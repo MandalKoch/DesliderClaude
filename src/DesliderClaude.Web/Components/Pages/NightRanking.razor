@@ -16,35 +16,43 @@
 
 @if (_night is null)
 {
-    <h1>Not found</h1>
-    <p><a href="/">Back home</a></p>
+    <h1>Not found.</h1>
+    <p><a href="/">← Back home</a></p>
 }
 else
 {
-    <h1>@_night.Name</h1>
-    <p>
+    <div class="ranking-head">
+        <div>
+            <span class="mono">Ranking</span>
+            <h1>@_night.Name</h1>
+        </div>
         @if (_night.IsClosed)
         {
-            <span><strong>Final ranking</strong> — voting closed @_night.ClosedAt?.ToString("f").</span>
+            <span class="ranking-status">Final · closed @(_night.ClosedAt?.ToString("MMM d, HH:mm"))</span>
         }
         else
         {
-            <span>Live ranking — updates every few seconds.</span>
+            <span class="ranking-status live">Live · refreshing</span>
         }
-    </p>
+    </div>
 
     @if (_ranking.Count == 0)
     {
-        <p>No games on the list yet.</p>
+        <div class="empty">No games on the list yet.</div>
     }
     else
     {
-        <ol class="ranking">
-            @foreach (var row in _ranking)
+        <ol class="ranking-list">
+            @for (int i = 0; i < _ranking.Count; i++)
             {
-                <li>
-                    <span class="name">@row.Name</span>
-                    <span class="votes">👍 @row.YesCount · 👎 @row.NoCount</span>
+                var row = _ranking[i];
+                <li class="@(i == 0 ? "winner" : null)">
+                    <span class="ranking-name">@row.Name</span>
+                    <span class="ranking-votes">
+                        <span class="yes">👍 @row.YesCount</span>
+                        <span class="dot">·</span>
+                        <span class="no">👎 @row.NoCount</span>
+                    </span>
                 </li>
             }
         </ol>
@@ -52,7 +60,9 @@ else
 
     @if (!_night.IsClosed)
     {
-        <p><a href="/night/@ShareCode/swipe">Back to swiping →</a></p>
+        <div class="btn-row">
+            <a class="btn" href="/night/@ShareCode/swipe">← Back to swiping</a>
+        </div>
     }
 }
 
@@ -69,24 +79,3 @@ else
         _ranking = await Voting.GetRankingAsync(_night.Id);
     }
 }
-
-<style>
-    ol.ranking { list-style: none; padding: 0; }
-    ol.ranking li {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid #eee;
-        counter-increment: rank;
-    }
-    ol.ranking li::before {
-        content: counter(rank) ".";
-        font-weight: bold;
-        color: #5C2D91;
-        margin-right: 0.75rem;
-        min-width: 1.5rem;
-    }
-    ol.ranking li:first-child { background: #fff8e1; }
-    ol.ranking .name { flex-grow: 1; }
-    ol.ranking .votes { color: #666; white-space: nowrap; }
-</style>
