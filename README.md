@@ -51,8 +51,13 @@ Install it to your home screen and it feels like a native app — no app store d
 
 🤖 Coded with [Claude Code](https://claude.com/claude-code).
 
-✨ Swipe gesture polished with the `emil-design-eng` skill — design engineering taste via [Emil Kowalski](https://animations.dev/).
-
-🔑 Memorable share codes (`autumn-frog-1234`) generated with [Haikunator](https://github.com/Atrox/haikunator) by Atrox.
-
 </div>
+
+---
+
+## 🙏 Credits
+
+Built on the shoulders of people whose work made this better:
+
+- ✨ **Swipe gesture polish** — the `emil-design-eng` Claude Code skill, distilling the design-engineering philosophy of [Emil Kowalski](https://animations.dev/). Every scale, easing curve, and fling threshold traces back to his course.
+- 🔑 **Memorable share codes** (`autumn-frog-1234`) — generated with [Haikunator](https://github.com/Atrox/haikunator) by Atrox.
