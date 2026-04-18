@@ -47,11 +47,14 @@ else
             {
                 var row = _ranking[i];
                 <li class="@(i == 0 ? "winner" : null)">
+                    @if (i == 0)
+                    {
+                        <span class="winner-badge">Top pick</span>
+                    }
                     <span class="ranking-name">@row.Name</span>
                     <span class="ranking-votes">
-                        <span class="yes">👍 @row.YesCount</span>
-                        <span class="dot">·</span>
-                        <span class="no">👎 @row.NoCount</span>
+                        <span class="yes">@row.YesCount yes</span>
+                        <span class="no">@row.NoCount no</span>
                     </span>
                 </li>
             }

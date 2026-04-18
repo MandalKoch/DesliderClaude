@@ -33,11 +33,14 @@ else
 {
     <div class="swipe-wrap">
         <div class="swipe-progress">
-            Game <strong>@(_swipedCount + 1)</strong> of <strong>@_night.Games.Count</strong>
+            <span class="swipe-progress-label"><strong>@(_swipedCount + 1)</strong> / @_night.Games.Count</span>
+            <span class="swipe-progress-bar">
+                <span class="swipe-progress-fill" style="width: @(((double)_swipedCount / _night.Games.Count) * 100)%"></span>
+            </span>
         </div>
 
         <article class="swipe-card">
-            <div class="swipe-card-label">tonight's candidate</div>
+            <div class="swipe-card-label">candidate</div>
             <h1 class="swipe-card-title">@_currentGame.Name</h1>
         </article>
 
