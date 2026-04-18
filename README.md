@@ -51,4 +51,6 @@ Install it to your home screen and it feels like a native app — no app store d
 
 🤖 Coded with [Claude Code](https://claude.com/claude-code).
 
+✨ Swipe gesture polished with the `emil-design-eng` skill — design engineering taste via [Emil Kowalski](https://animations.dev/).
+
 </div>
