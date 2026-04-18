@@ -111,6 +111,7 @@ DesliderClaude.slnx
 - **Folder layout for data shapes:** entities and DTOs live in `Models/` (namespace `...Models`), never in `Services/` or `Entities/`. The distinction between "entity" (EF-mapped) and "DTO" (projection / return shape) is not a folder-level concern.
 - **Generate Guids with `Guid.CreateVersion7()`** (RFC 9562 UUID v7), never `Guid.NewGuid()` (v4). v7 is time-ordered, so inserts preserve B-tree index locality and IDs are chronologically sortable. Applies to every entity PK and any other Guid we mint.
 - **`README.md` is the public marketing page, not a mirror of this file.** It describes what DesliderClaude *is* to end users — the product story, how it feels to use. Only update `README.md` when the product story itself changes (new user-facing concept, rename, repositioning). Architecture / structure / convention / status changes stay in `CLAUDE.md` and do **not** require a README update.
+- **Credit what we use.** When a third-party library, Claude Code skill, or external source materially shapes code we ship, credit it. Add a short line to `README.md` (footer area) linking out — author name + project/site URL. Examples already in the tree: [Haikunator](https://github.com/Atrox/haikunator) (share-code generation), the `emil-design-eng` skill / [Emil Kowalski](https://animations.dev/) (swipe-gesture polish). This rule is a product-story change (it's user-visible acknowledgement), so updating the README *is* warranted — one of the few exceptions to the rule above.
 
 ## Status
 
