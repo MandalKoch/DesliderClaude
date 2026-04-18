@@ -40,6 +40,7 @@ else
         </div>
 
         <article class="swipe-card">
+            <div class="swipe-card-corners"></div>
             <div class="swipe-card-label">candidate</div>
             <h1 class="swipe-card-title">@_currentGame.Name</h1>
         </article>
@@ -49,10 +50,10 @@ else
             <input type="hidden" name="Form.GameId" value="@_currentGame.Id" />
             <div class="swipe-actions">
                 <button type="submit" name="Form.Yes" value="false" class="swipe-btn swipe-btn-no">
-                    <span class="emoji" aria-hidden="true">👎</span>Nope
+                    <span class="emoji" aria-hidden="true">✕</span>Pass
                 </button>
                 <button type="submit" name="Form.Yes" value="true" class="swipe-btn swipe-btn-yes">
-                    <span class="emoji" aria-hidden="true">👍</span>Heck yes
+                    <span class="emoji" aria-hidden="true">✓</span>Deploy
                 </button>
             </div>
         </form>

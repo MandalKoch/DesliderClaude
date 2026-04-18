@@ -23,16 +23,16 @@ else
 {
     <div class="ranking-head">
         <div>
-            <span class="mono">Ranking</span>
+            <span class="kicker">Standings</span>
             <h1>@_night.Name</h1>
         </div>
         @if (_night.IsClosed)
         {
-            <span class="ranking-status">Final · closed @(_night.ClosedAt?.ToString("MMM d, HH:mm"))</span>
+            <span class="ranking-status">Final · @(_night.ClosedAt?.ToString("MMM d, HH:mm"))</span>
         }
         else
         {
-            <span class="ranking-status live">Live · refreshing</span>
+            <span class="ranking-status live">Live</span>
         }
     </div>
 
@@ -53,8 +53,8 @@ else
                     }
                     <span class="ranking-name">@row.Name</span>
                     <span class="ranking-votes">
-                        <span class="yes">@row.YesCount yes</span>
-                        <span class="no">@row.NoCount no</span>
+                        <span class="yes">+@row.YesCount</span>
+                        <span class="no">−@row.NoCount</span>
                     </span>
                 </li>
             }

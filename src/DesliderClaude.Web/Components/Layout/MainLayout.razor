@@ -2,10 +2,20 @@
 
 <header class="app-header">
     <a class="app-brand" href="/">
-        <span class="mark" aria-hidden="true"></span>
+        <svg class="hex" viewBox="0 0 26 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+                <linearGradient id="hexGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#4fd1ff" />
+                    <stop offset="100%" stop-color="#ffb443" />
+                </linearGradient>
+            </defs>
+            <path d="M13 1.5 L24 7.5 L24 22.5 L13 28.5 L2 22.5 L2 7.5 Z" stroke="url(#hexGrad)" stroke-width="1.5" />
+            <path d="M13 8 L18 11 L18 19 L13 22 L8 19 L8 11 Z" stroke="#4fd1ff" stroke-width="1" opacity="0.7" />
+            <circle cx="13" cy="15" r="1.3" fill="#ffb443" />
+        </svg>
         <span><span class="name">Deslider</span><span class="name-dim">Claude</span></span>
     </a>
-    <span class="app-header-tag">v0 · prealpha</span>
+    <span class="app-header-tag">online</span>
 </header>
 
 <main class="page">
@@ -14,11 +24,11 @@
 
 <footer class="footer-meta">
     <span>Friend-group party app</span>
-    <span>Built with Aspire · .NET 10</span>
+    <span>Aspire · .NET 10</span>
 </footer>
 
 <div id="blazor-error-ui" data-nosnippet>
-    Something went wrong.
+    System error
     <a href="." class="reload">Reload</a>
     <span class="dismiss">✕</span>
 </div>

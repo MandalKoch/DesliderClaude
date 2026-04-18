@@ -23,17 +23,17 @@ else if (_night.IsClosed)
 }
 else
 {
-    <span class="mono">Game Night</span>
+    <span class="kicker">Game Night · @_night.Games.Count candidates</span>
     <h1>@_night.Name</h1>
-    <p class="subtle">@_night.Games.Count games on the list. Enter a name to start swiping.</p>
+    <p class="subtle">Pick a callsign to start swiping.</p>
 
     <div class="form-card">
         <form method="post" @formname="join" @onsubmit="JoinAsync">
             <AntiforgeryToken />
-            <label for="display-name">Your name</label>
+            <label for="display-name">Your callsign</label>
             <input id="display-name" name="Form.DisplayName" value="@(Form?.DisplayName ?? _prefill)" maxlength="40" autocomplete="nickname" required autofocus />
             <div class="btn-row">
-                <button type="submit" class="btn btn-primary">Start swiping →</button>
+                <button type="submit" class="btn btn-primary">Enter the deck →</button>
             </div>
         </form>
     </div>
