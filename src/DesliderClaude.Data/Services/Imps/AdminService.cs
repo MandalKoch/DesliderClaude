@@ -38,17 +38,34 @@ internal sealed partial class AdminService : IAdminService
 
     public async Task<IReadOnlyList<AdminUserRow>> ListUsersAsync(CancellationToken ct = default)
     {
-        // SQLite can't ORDER BY DateTimeOffset — materialize, then sort in memory.
+        // External providers in a second query, keyed by UserId — avoids a
+        // navigation-inside-Select that SQLite won't translate.
+        var providers = (await _db.ExternalLogins
+                .Select(l => new { l.UserId, l.Provider })
+                .ToListAsync(ct))
+            .GroupBy(l => l.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(l => l.Provider).Distinct().ToList());
+
         var rows = await _db.Users
-            .Select(u => new AdminUserRow(
+            .Select(u => new
+            {
                 u.Id,
                 u.Username,
                 u.CreatedAt,
-                _db.GameNights.Count(n => n.CreatedByUserId == u.Id),
-                _db.Voters.Where(v => v.UserId == u.Id).Select(v => v.GameNightId).Distinct().Count(),
-                _db.Voters.Where(v => v.UserId == u.Id).SelectMany(v => v.Swipes).Count()))
+                HasPassword = u.PasswordHash != null,
+                NightsHosted = _db.GameNights.Count(n => n.CreatedByUserId == u.Id),
+                NightsVotedIn = _db.Voters.Where(v => v.UserId == u.Id).Select(v => v.GameNightId).Distinct().Count(),
+                SwipeCount = _db.Voters.Where(v => v.UserId == u.Id).SelectMany(v => v.Swipes).Count(),
+            })
             .ToListAsync(ct);
-        return rows.OrderByDescending(r => r.CreatedAt).ToList();
+
+        return rows
+            .Select(r => new AdminUserRow(
+                r.Id, r.Username, r.CreatedAt, r.HasPassword,
+                providers.TryGetValue(r.Id, out var p) ? p : Array.Empty<string>(),
+                r.NightsHosted, r.NightsVotedIn, r.SwipeCount))
+            .OrderByDescending(r => r.CreatedAt)
+            .ToList();
     }
 
     public async Task<IReadOnlyList<AdminNightRow>> ListNightsAsync(CancellationToken ct = default)

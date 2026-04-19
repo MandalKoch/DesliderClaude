@@ -14,6 +14,8 @@ public sealed record AdminUserRow(
     Guid Id,
     string Username,
     DateTimeOffset CreatedAt,
+    bool HasPassword,
+    IReadOnlyList<string> ExternalProviders,
     int NightsHosted,
     int NightsVotedIn,
     int SwipeCount);

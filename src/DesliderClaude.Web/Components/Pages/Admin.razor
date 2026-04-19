@@ -121,6 +121,7 @@ else
             <thead>
                 <tr>
                     <th>Username</th>
+                    <th>Sign-in</th>
                     <th class="right">Hosted</th>
                     <th class="right">Voted in</th>
                     <th class="right">Swipes</th>
@@ -133,6 +134,20 @@ else
                 {
                     <tr>
                         <td>@u.Username</td>
+                        <td>
+                            @if (u.HasPassword)
+                            {
+                                <span class="nights-badge voter" title="Registered with a local password">Local</span>
+                            }
+                            @foreach (var p in u.ExternalProviders)
+                            {
+                                <span class="nights-badge host" title="Signs in with @p">@p</span>
+                            }
+                            @if (!u.HasPassword && u.ExternalProviders.Count == 0)
+                            {
+                                <span class="subtle">—</span>
+                            }
+                        </td>
                         <td class="right">@u.NightsHosted</td>
                         <td class="right">@u.NightsVotedIn</td>
                         <td class="right">@u.SwipeCount</td>
