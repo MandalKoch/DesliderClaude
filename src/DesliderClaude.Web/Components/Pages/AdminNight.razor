@@ -3,7 +3,6 @@
 @using DesliderClaude.Core.Services
 @inject IGameNightService GameNights
 @inject IAdminService AdminSvc
-@inject NavigationManager Nav
 
 <PageTitle>Admin · @(_night?.Name ?? ShareCode)</PageTitle>
 
@@ -104,14 +103,10 @@ else
     private async Task DeleteVoterAsync(Guid voterId)
     {
         _error = null;
-        try
-        {
-            await AdminSvc.DeleteVoterAsync(voterId);
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        Nav.NavigateTo($"/admin/nights/{ShareCode}");
+        try { await AdminSvc.DeleteVoterAsync(voterId); }
+        catch (Exception ex) { _error = ex.Message; }
+        // Reload voter list in-place so scroll position is preserved.
+        if (_night is not null)
+            _voters = await AdminSvc.ListVotersForNightAsync(_night.Id);
     }
 }

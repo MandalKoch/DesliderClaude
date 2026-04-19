@@ -2,7 +2,6 @@
 @using DesliderClaude.Core.Models
 @using DesliderClaude.Core.Services
 @inject IAdminService AdminSvc
-@inject NavigationManager Nav
 
 <PageTitle>Admin — DesliderClaude</PageTitle>
 
@@ -214,46 +213,31 @@ else
         _topGames = await AdminSvc.TopGamesAsync();
     }
 
+    // Handlers intentionally don't Nav.NavigateTo — Blazor SSR re-renders the
+    // page after the form POST, and skipping the redirect lets enhanced
+    // navigation preserve scroll position on the admin deck.
     private async Task DeleteNightAsync(Guid nightId)
     {
         _error = null;
-        try
-        {
-            await AdminSvc.DeleteNightAsync(nightId);
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        Nav.NavigateTo("/admin");
+        try { await AdminSvc.DeleteNightAsync(nightId); }
+        catch (Exception ex) { _error = ex.Message; }
+        await LoadAsync();
     }
 
     private async Task CloseNightAsync(Guid nightId)
     {
         _error = null;
-        try
-        {
-            await AdminSvc.CloseNightAsync(nightId);
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        Nav.NavigateTo("/admin");
+        try { await AdminSvc.CloseNightAsync(nightId); }
+        catch (Exception ex) { _error = ex.Message; }
+        await LoadAsync();
     }
 
     private async Task DeleteUserAsync(Guid userId)
     {
         _error = null;
         if (userId == _currentUserId) { _error = "You can't delete yourself."; return; }
-        try
-        {
-            await AdminSvc.DeleteUserAsync(userId);
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        Nav.NavigateTo("/admin");
+        try { await AdminSvc.DeleteUserAsync(userId); }
+        catch (Exception ex) { _error = ex.Message; }
+        await LoadAsync();
     }
 }
