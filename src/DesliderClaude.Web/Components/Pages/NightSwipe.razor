@@ -48,7 +48,7 @@ else
                 <div class="swipe-card-corners"></div>
                 <div class="swipe-card-label">candidate</div>
                 <h1 class="swipe-card-title">@_currentGame.Name</h1>
-                <span class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">Deploy</span>
+                <span class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">Play</span>
                 <span class="swipe-stamp swipe-stamp-no" data-swipe-overlay-no aria-hidden="true">Pass</span>
             </article>
             <p class="swipe-hint" aria-hidden="true">Drag the card · or use the buttons · swipes update live</p>
@@ -58,11 +58,11 @@ else
             <AntiforgeryToken />
             <input type="hidden" name="Form.GameId" value="@_currentGame.Id" />
             <div class="swipe-actions">
+                <button type="submit" name="Form.Yes" value="true" class="swipe-btn swipe-btn-yes" data-swipe-yes>
+                    <span class="emoji" aria-hidden="true">✓</span>Play
+                </button>
                 <button type="submit" name="Form.Yes" value="false" class="swipe-btn swipe-btn-no" data-swipe-no>
                     <span class="emoji" aria-hidden="true">✕</span>Pass
-                </button>
-                <button type="submit" name="Form.Yes" value="true" class="swipe-btn swipe-btn-yes" data-swipe-yes>
-                    <span class="emoji" aria-hidden="true">✓</span>Deploy
                 </button>
             </div>
         </form>

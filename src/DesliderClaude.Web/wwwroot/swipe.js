@@ -101,8 +101,9 @@
             const rotation = Math.max(-MAX_ROTATION_DEG, Math.min(MAX_ROTATION_DEG, dx * DRAG_ROTATION_K));
             card.style.transform = `translate3d(${dx}px, ${dy}px, 0) rotate(${rotation}deg)`;
 
-            if (overlayYes) overlayYes.style.opacity = Math.min(1, Math.max(0, dx / SWIPE_THRESHOLD_PX));
-            if (overlayNo) overlayNo.style.opacity = Math.min(1, Math.max(0, -dx / SWIPE_THRESHOLD_PX));
+            // Left drag = Play (yes), right drag = Pass (no).
+            if (overlayYes) overlayYes.style.opacity = Math.min(1, Math.max(0, -dx / SWIPE_THRESHOLD_PX));
+            if (overlayNo) overlayNo.style.opacity = Math.min(1, Math.max(0, dx / SWIPE_THRESHOLD_PX));
         };
 
         const fling = (direction) => {
@@ -110,8 +111,9 @@
             committed = true;
             card.classList.add('is-flinging');
             const button = direction === 'yes' ? btnYes : btnNo;
-            const targetX = direction === 'yes' ? window.innerWidth + 220 : -(window.innerWidth + 220);
-            const rot = direction === 'yes' ? 22 : -22;
+            // Play (yes) flies off to the left, Pass (no) to the right.
+            const targetX = direction === 'yes' ? -(window.innerWidth + 220) : window.innerWidth + 220;
+            const rot = direction === 'yes' ? -22 : 22;
             const overlayToPeak = direction === 'yes' ? overlayYes : overlayNo;
             if (overlayToPeak) overlayToPeak.style.opacity = '1';
 
@@ -153,7 +155,7 @@
             const passVelocity = velocity > VELOCITY_THRESHOLD && Math.abs(dx) > MIN_FLING_DISTANCE;
 
             if (passDistance || passVelocity) {
-                fling(dx > 0 ? 'yes' : 'no');
+                fling(dx < 0 ? 'yes' : 'no');
             } else {
                 snapBack();
             }

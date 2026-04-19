@@ -887,16 +887,16 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
     -webkit-backdrop-filter: blur(4px);
 }
 .swipe-stamp-yes {
-    right: var(--s-5);
+    left: var(--s-5);
     color: var(--cyan);
-    transform: rotate(-12deg);
+    transform: rotate(12deg);
     text-shadow: 0 0 16px var(--cyan-glow);
     box-shadow: 0 0 20px -2px var(--cyan-glow);
 }
 .swipe-stamp-no {
-    left: var(--s-5);
+    right: var(--s-5);
     color: var(--crimson);
-    transform: rotate(12deg);
+    transform: rotate(-12deg);
     text-shadow: 0 0 16px var(--crimson-glow);
     box-shadow: 0 0 20px -2px var(--crimson-glow);
 }
@@ -935,7 +935,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
     background: rgba(255, 74, 106, 0.08);
     color: var(--crimson-soft);
     border: 1px solid rgba(255, 74, 106, 0.35);
-    clip-path: var(--clip-btn-left);
+    clip-path: var(--clip-btn-right);
 }
 .swipe-btn-no:hover {
     background: rgba(255, 74, 106, 0.15);
@@ -949,7 +949,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
     color: #00121b;
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 8px 28px -10px var(--cyan-glow);
-    clip-path: var(--clip-btn-right);
+    clip-path: var(--clip-btn-left);
 }
 .swipe-btn-yes:hover {
     background: linear-gradient(135deg, var(--cyan-soft), var(--cyan));
