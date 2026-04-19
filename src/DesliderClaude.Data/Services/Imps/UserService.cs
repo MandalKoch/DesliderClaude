@@ -15,8 +15,6 @@ internal sealed class UserService : IUserService
         var normalized = Normalize(username);
         if (string.IsNullOrWhiteSpace(normalized))
             throw new InvalidOperationException("Username cannot be empty.");
-        if (password.Length < 8)
-            throw new InvalidOperationException("Password must be at least 8 characters.");
 
         if (await _db.Users.AnyAsync(u => u.Username == normalized, ct))
             throw new InvalidOperationException("Username already taken.");
@@ -44,9 +42,6 @@ internal sealed class UserService : IUserService
 
     public async Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken ct = default)
     {
-        if (newPassword.Length < 8)
-            throw new InvalidOperationException("New password must be at least 8 characters.");
-
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
             ?? throw new InvalidOperationException("User not found.");
         if (user.PasswordHash is null)

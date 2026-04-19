@@ -529,7 +529,7 @@ label {
     font-weight: 600;
 }
 
-input[type="text"], input[type="search"], input[type="date"], input:not([type]), textarea {
+input[type="text"], input[type="search"], input[type="date"], input[type="password"], input:not([type]), textarea {
     width: 100%;
     font-family: var(--font-body);
     font-size: 1.125rem;
