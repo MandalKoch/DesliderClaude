@@ -110,6 +110,13 @@ else
                                             onclick="return confirm('Close voting on “@n.Name”? Locks the ranking and flips every voter to the winner.');">Close</button>
                                 </form>
                             }
+                            else
+                            {
+                                <form method="post" @formname="@($"reopen-night-{n.Id}")" @onsubmit="() => ReopenNightAsync(n.Id)" data-enhance>
+                                    <AntiforgeryToken />
+                                    <button type="submit" class="btn btn-ghost btn-sm" title="Re-open voting">Re-open</button>
+                                </form>
+                            }
                             <form method="post" @formname="@($"del-night-{n.Id}")" @onsubmit="() => DeleteNightAsync(n.Id)" data-enhance>
                                 <AntiforgeryToken />
                                 <button type="submit" class="btn btn-ghost btn-sm" title="Delete night"
@@ -228,6 +235,14 @@ else
     {
         _error = null;
         try { await AdminSvc.CloseNightAsync(nightId); }
+        catch (Exception ex) { _error = ex.Message; }
+        await LoadAsync();
+    }
+
+    private async Task ReopenNightAsync(Guid nightId)
+    {
+        _error = null;
+        try { await AdminSvc.ReopenNightAsync(nightId); }
         catch (Exception ex) { _error = ex.Message; }
         await LoadAsync();
     }

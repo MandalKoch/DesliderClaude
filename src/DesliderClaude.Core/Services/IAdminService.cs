@@ -23,6 +23,9 @@ public interface IAdminService
     /// if the night is already closed.</summary>
     Task CloseNightAsync(Guid nightId, CancellationToken ct = default);
 
+    /// <summary>Re-open a closed Game Night. No-op if the night is already open.</summary>
+    Task ReopenNightAsync(Guid nightId, CancellationToken ct = default);
+
     /// <summary>List voters on a specific night with per-voter activity.</summary>
     Task<IReadOnlyList<AdminVoterRow>> ListVotersForNightAsync(Guid nightId, CancellationToken ct = default);
 

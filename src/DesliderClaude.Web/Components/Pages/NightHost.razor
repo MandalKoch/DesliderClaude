@@ -104,12 +104,28 @@ else
         <div class="form-card">
             <h2 style="margin: 0 0 var(--s-3);">Close voting</h2>
             <p class="subtle">
-                Locks the ranking and flips everyone's swipe screen to the winner. You can't undo this.
+                Locks the ranking and flips everyone's swipe screen to the winner. You can re-open later if you change your mind.
             </p>
             <form method="post" @formname="close-night" @onsubmit="CloseAsync">
                 <AntiforgeryToken />
                 <div class="btn-row">
                     <button type="submit" class="btn btn-primary">Close voting & lock the pick</button>
+                </div>
+            </form>
+        </div>
+    }
+    else
+    {
+        <hr />
+        <div class="form-card">
+            <h2 style="margin: 0 0 var(--s-3);">Re-open voting</h2>
+            <p class="subtle">
+                Unlocks the night so voters can keep swiping. Existing swipes stay intact.
+            </p>
+            <form method="post" @formname="reopen-night" @onsubmit="ReopenAsync">
+                <AntiforgeryToken />
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-ghost">Re-open voting</button>
                 </div>
             </form>
         </div>
@@ -166,6 +182,23 @@ else
         try
         {
             await GameNights.CloseAsync(_night.Id, uid);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return;
+        }
+
+        Nav.NavigateTo($"/night/{ShareCode}/host");
+    }
+
+    private async Task ReopenAsync()
+    {
+        if (_night is null || _currentUserId is not { } uid) return;
+
+        try
+        {
+            await GameNights.ReopenAsync(_night.Id, uid);
         }
         catch (Exception ex)
         {

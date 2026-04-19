@@ -96,6 +96,20 @@ internal sealed partial class GameNightService : IGameNightService
         LogGameNightClosed(night.ShareCode);
     }
 
+    public async Task ReopenAsync(Guid gameNightId, Guid requestingUserId, CancellationToken ct = default)
+    {
+        var night = await _db.GameNights.FirstOrDefaultAsync(n => n.Id == gameNightId, ct)
+            ?? throw new InvalidOperationException("Game Night not found.");
+        if (night.CreatedByUserId != requestingUserId)
+            throw new UnauthorizedAccessException("Only the night's creator can re-open it.");
+        if (!night.IsClosed) return;
+
+        night.IsClosed = false;
+        night.ClosedAt = null;
+        await _db.SaveChangesAsync(ct);
+        LogGameNightReopened(night.ShareCode);
+    }
+
     private async Task<string> GenerateUniqueShareCodeAsync(CancellationToken ct)
     {
         for (int i = 0; i < 10; i++)
@@ -113,4 +127,8 @@ internal sealed partial class GameNightService : IGameNightService
     [LoggerMessage(EventId = 1002, Level = LogLevel.Information,
         Message = "Closed game night {ShareCode}")]
     private partial void LogGameNightClosed(string shareCode);
+
+    [LoggerMessage(EventId = 1003, Level = LogLevel.Information,
+        Message = "Re-opened game night {ShareCode}")]
+    private partial void LogGameNightReopened(string shareCode);
 }

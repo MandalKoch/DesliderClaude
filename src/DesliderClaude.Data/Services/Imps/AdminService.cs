@@ -163,6 +163,17 @@ internal sealed partial class AdminService : IAdminService
         LogNightClosed(nightId, night.ShareCode);
     }
 
+    public async Task ReopenNightAsync(Guid nightId, CancellationToken ct = default)
+    {
+        var night = await _db.GameNights.FirstOrDefaultAsync(n => n.Id == nightId, ct)
+            ?? throw new InvalidOperationException("Night not found.");
+        if (!night.IsClosed) return;
+        night.IsClosed = false;
+        night.ClosedAt = null;
+        await _db.SaveChangesAsync(ct);
+        LogNightReopened(nightId, night.ShareCode);
+    }
+
     [LoggerMessage(EventId = 3001, Level = LogLevel.Warning,
         Message = "Admin deleted user {UserId} ({Username})")]
     private partial void LogUserDeleted(Guid userId, string username);
@@ -178,4 +189,8 @@ internal sealed partial class AdminService : IAdminService
     [LoggerMessage(EventId = 3004, Level = LogLevel.Warning,
         Message = "Admin deleted voter {VoterId} ({DisplayName}) from night {NightId}")]
     private partial void LogVoterDeleted(Guid voterId, string displayName, Guid nightId);
+
+    [LoggerMessage(EventId = 3005, Level = LogLevel.Warning,
+        Message = "Admin re-opened game night {NightId} ({ShareCode})")]
+    private partial void LogNightReopened(Guid nightId, string shareCode);
 }
