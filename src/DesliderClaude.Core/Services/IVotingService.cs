@@ -4,7 +4,7 @@ namespace DesliderClaude.Core.Services;
 
 public interface IVotingService
 {
-    Task<Voter> JoinAsync(Guid gameNightId, string displayName, string voterToken, CancellationToken ct = default);
+    Task<Voter> JoinAsync(Guid gameNightId, string displayName, string voterToken, Guid? userId = null, CancellationToken ct = default);
     Task RecordSwipeAsync(string voterToken, Guid gameId, bool yes, CancellationToken ct = default);
     Task<IReadOnlyList<GameRanking>> GetRankingAsync(Guid gameNightId, CancellationToken ct = default);
     Task<int> GetVoterCountAsync(Guid gameNightId, CancellationToken ct = default);

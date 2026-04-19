@@ -47,6 +47,7 @@ else
 @code {
     [Parameter] public string ShareCode { get; set; } = string.Empty;
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromForm] public JoinFormModel? Form { get; set; }
 
     private GameNight? _night;
@@ -66,6 +67,13 @@ else
             {
                 _prefill = progress.DisplayName;
             }
+        }
+
+        // Fall back to the signed-in username so the host doesn't have to retype.
+        if (string.IsNullOrEmpty(_prefill) && AuthState is not null)
+        {
+            var state = await AuthState;
+            _prefill = state.User.GetUsername() ?? string.Empty;
         }
     }
 
@@ -88,9 +96,16 @@ else
             HttpContext.Response.Cookies.Append(cookieName, token, VoterCookie.Options);
         }
 
+        Guid? userId = null;
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            userId = state.User.GetUserId();
+        }
+
         try
         {
-            await Voting.JoinAsync(_night.Id, name, token);
+            await Voting.JoinAsync(_night.Id, name, token, userId);
         }
         catch (InvalidOperationException ex)
         {

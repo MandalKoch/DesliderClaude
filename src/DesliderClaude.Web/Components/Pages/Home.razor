@@ -1,4 +1,7 @@
 @page "/"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
 
 <PageTitle>DesliderClaude — Swipe. Rank. Play.</PageTitle>
 
@@ -42,6 +45,95 @@
     </NotAuthorized>
 </AuthorizeView>
 
+<AuthorizeView>
+    <Authorized>
+        @if (_nights.Count > 0)
+        {
+            <hr />
+
+            <div class="nights-head">
+                <div>
+                    <span class="kicker">Your nights</span>
+                    <h2 style="margin: 0;">@_visibleCount / @_nights.Count</h2>
+                </div>
+                <form method="get" action="/" class="nights-filter">
+                    <label class="nights-filter-group">
+                        <span class="subtle">Status</span>
+                        <select name="status" onchange="this.form.submit()">
+                            <option value="all" selected="@(Status == "all")">All</option>
+                            <option value="open" selected="@(Status == "open")">Open</option>
+                            <option value="closed" selected="@(Status == "closed")">Closed</option>
+                            <option value="needs-vote" selected="@(Status == "needs-vote")">Needs my vote</option>
+                        </select>
+                    </label>
+                    <label class="nights-filter-group">
+                        <span class="subtle">Role</span>
+                        <select name="role" onchange="this.form.submit()">
+                            <option value="all" selected="@(Role == "all")">All</option>
+                            <option value="host" selected="@(Role == "host")">I host</option>
+                            <option value="voter" selected="@(Role == "voter")">I vote</option>
+                        </select>
+                    </label>
+                    <label class="nights-filter-group">
+                        <span class="subtle">Sort</span>
+                        <select name="sort" onchange="this.form.submit()">
+                            <option value="smart" selected="@(Sort == "smart")">Smart</option>
+                            <option value="date" selected="@(Sort == "date")">Nearest date</option>
+                            <option value="recent" selected="@(Sort == "recent")">Recently created</option>
+                        </select>
+                    </label>
+                </form>
+            </div>
+
+            @if (_visibleCount == 0)
+            {
+                <p class="subtle">No nights match these filters.</p>
+            }
+            else
+            {
+                <ul class="nights-list">
+                    @foreach (var n in _filtered)
+                    {
+                        var href = n.IsHost ? $"/night/{n.ShareCode}/host" : $"/night/{n.ShareCode}";
+                        <li class="@(n.HasMissingVote ? "needs-vote" : null) @(n.IsClosed ? "is-closed" : null)">
+                            <a href="@href" class="nights-row">
+                                <div class="nights-row-main">
+                                    <span class="nights-row-name">@n.Name</span>
+                                    <div class="nights-row-meta">
+                                        @if (n.IsHost)
+                                        {
+                                            <span class="nights-badge host">Host</span>
+                                        }
+                                        else if (n.IsVoter)
+                                        {
+                                            <span class="nights-badge voter">Voter</span>
+                                        }
+
+                                        @if (n.IsClosed)
+                                        {
+                                            <span class="nights-badge closed">Closed</span>
+                                        }
+                                        else if (n.HasMissingVote)
+                                        {
+                                            <span class="nights-badge warn">@(n.GameCount - n.SwipesByViewer) unvoted</span>
+                                        }
+
+                                        @if (n.TargetDate is { } d)
+                                        {
+                                            <span class="nights-date">@d.ToString("MMM d")</span>
+                                        }
+                                    </div>
+                                </div>
+                                <span class="nights-row-arrow">→</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+        }
+    </Authorized>
+</AuthorizeView>
+
 <hr />
 
 <p class="subtle">
@@ -53,6 +145,71 @@
 @code {
     [SupplyParameterFromForm] public GoForm? Form { get; set; }
     [Inject] public NavigationManager Nav { get; set; } = default!;
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
+
+    [SupplyParameterFromQuery] public string? Status { get; set; }
+    [SupplyParameterFromQuery] public string? Role { get; set; }
+    [SupplyParameterFromQuery] public string? Sort { get; set; }
+
+    private IReadOnlyList<UserNightSummary> _nights = Array.Empty<UserNightSummary>();
+    private IReadOnlyList<UserNightSummary> _filtered = Array.Empty<UserNightSummary>();
+    private int _visibleCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Status ??= "all";
+        Role ??= "all";
+        Sort ??= "smart";
+
+        if (AuthState is null) return;
+        var state = await AuthState;
+        var userId = state.User.GetUserId();
+        if (userId is not { } uid) return;
+
+        _nights = await GameNights.ListForUserAsync(uid);
+        _filtered = ApplyFilterAndSort(_nights);
+        _visibleCount = _filtered.Count;
+    }
+
+    private IReadOnlyList<UserNightSummary> ApplyFilterAndSort(IReadOnlyList<UserNightSummary> all)
+    {
+        IEnumerable<UserNightSummary> q = all;
+
+        q = Status switch
+        {
+            "open" => q.Where(n => !n.IsClosed),
+            "closed" => q.Where(n => n.IsClosed),
+            "needs-vote" => q.Where(n => n.HasMissingVote),
+            _ => q,
+        };
+
+        q = Role switch
+        {
+            "host" => q.Where(n => n.IsHost),
+            "voter" => q.Where(n => n.IsVoter && !n.IsHost),
+            _ => q,
+        };
+
+        // "Smart" ordering: closed always at the bottom; among open nights,
+        // ones where the viewer still needs to vote bubble up; within each
+        // band, nearest target date first (nulls last), then newest first as
+        // stable tiebreaker.
+        q = Sort switch
+        {
+            "date" => q.OrderBy(n => n.IsClosed)
+                       .ThenBy(n => n.TargetDate is null)
+                       .ThenBy(n => n.TargetDate),
+            "recent" => q.OrderBy(n => n.IsClosed)
+                         .ThenByDescending(n => n.CreatedAt),
+            _ => q.OrderBy(n => n.IsClosed)
+                  .ThenByDescending(n => n.HasMissingVote)
+                  .ThenBy(n => n.TargetDate is null)
+                  .ThenBy(n => n.TargetDate)
+                  .ThenBy(n => n.Name),
+        };
+
+        return q.ToList();
+    }
 
     private void GoToNight()
     {

@@ -342,6 +342,111 @@ a:hover { color: var(--text); border-color: var(--cyan); }
 
 .text-ok { color: var(--mint); font-weight: 600; margin-top: var(--s-3); }
 
+/* ---------- "your nights" list on home ---------- */
+.nights-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--s-4);
+}
+.nights-filter {
+    display: flex;
+    gap: var(--s-3);
+    flex-wrap: wrap;
+}
+.nights-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-family: var(--font-hud);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+}
+.nights-filter select {
+    background: rgba(5, 8, 24, 0.6);
+    color: var(--text);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.nights-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+}
+.nights-list li {
+    background: rgba(10, 16, 42, 0.55);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.nights-list li:hover { border-color: rgba(79, 209, 255, 0.4); background: rgba(12, 20, 56, 0.65); }
+.nights-list li.needs-vote { border-color: rgba(255, 180, 67, 0.35); }
+.nights-list li.is-closed { opacity: 0.55; }
+
+.nights-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+    color: var(--text);
+    border: none !important;
+}
+.nights-row:hover { color: var(--text); }
+.nights-row-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.nights-row-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+}
+.nights-row-meta {
+    display: flex;
+    gap: var(--s-2);
+    flex-wrap: wrap;
+    align-items: center;
+}
+.nights-row-arrow {
+    font-family: var(--font-hud);
+    color: var(--text-muted);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.nights-badge {
+    font-family: var(--font-hud);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+    padding: 2px 8px;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+.nights-badge.host { color: var(--gold-soft); border-color: rgba(255, 180, 67, 0.35); }
+.nights-badge.voter { color: var(--cyan-soft); border-color: rgba(79, 209, 255, 0.35); }
+.nights-badge.closed { color: var(--text-dim); }
+.nights-badge.warn { color: var(--gold); border-color: rgba(255, 180, 67, 0.45); background: rgba(255, 180, 67, 0.06); }
+
+.nights-date {
+    font-family: var(--font-hud);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+}
+
 main.page {
     max-width: 680px;
     margin: 0 auto;

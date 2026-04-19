@@ -133,7 +133,8 @@ DesliderClaude.slnx
 **Product** — the full MVP loop works end-to-end and is live at [desliderclaude.fly.dev](https://desliderclaude.fly.dev/):
 
 - **Auth (phase 1, local):** cookie-based login (`deslider-auth`, 30-day sliding, HttpOnly). `/register` and `/signin` are local username + password (PBKDF2-SHA256, 600k iters, versioned hash). `/account` shows the current username + provider, lets local users change their password, and has sign-out. The `ExternalLogin` table is in place for Google/Apple to drop in without a schema change.
-- Home page → share-code join form is always visible. **Signed-in** users see "Host a new night →"; unauth users see "Sign in to host →" / "Create account". `/create` has `[Authorize]` (redirects to `/signin?returnUrl=/create`).
+- `GameNight.CreatedByUserId` and `Voter.UserId` are nullable FKs populated when the actor is signed in. Anonymous creates/joins still work (cookie-based), but signed-in ones get stored on the user so they show up on the home-page list.
+- Home page → share-code join form is always visible. **Signed-in** users see "Host a new night →" plus a **Your nights** list (filter by status / role, sort by smart / date / recent). Default "smart" order: open nights first, ones where you still need to vote bubble up, nearest `TargetDate` first, closed nights at the bottom. Unauth users see "Sign in to host →" / "Create account". `/create` has `[Authorize]` (redirects to `/signin?returnUrl=/create`).
 - `/create` mints a `GameNight` + `HostToken`, drops a `deslider-host-{shareCode}` cookie, redirects to `/night/{shareCode}/host`.
 - Host dashboard — share URL with copy button, live counters (voters / games / swipes), compact ranking snapshot (10 s meta-refresh while open), **Close voting** button. Cookie-gated: no cookie / mismatch → "Not your night" screen.
 - Voter loop unchanged — `/night/{shareCode}` join → `/swipe` continuous weighted-random deck → `/ranking` live standings → `/winner` hero view. Closing voting flips every voter's swipe screen to the winner.
@@ -148,7 +149,6 @@ DesliderClaude.slnx
 **Tests** — `tests/DesliderClaude.Tests/` (NUnit + Playwright) drives the host flow end-to-end in real Chromium. `dotnet test` is a one-liner after the first-time `playwright install chromium`.
 
 **Next up**
-- Phase 2: link `GameNight.CreatedByUserId` + `Voter.UserId` to the logged-in user so the landing page can list "nights you're part of" (filter + order; default order = missing-vote first, then nearest `TargetDate`).
 - Google OAuth — slot `Microsoft.AspNetCore.Authentication.Google` in behind the existing cookie scheme, link via the `ExternalLogin` table.
 - Apple Sign-In via `AspNet.Security.OAuth.Apple` (required if we ever ship MAUI to the App Store).
 - PWA manifest + service worker; then SignalR to replace the meta-refresh loops.
@@ -159,6 +159,8 @@ DesliderClaude.slnx
 - Host has no way to recover a lost cookie today. Phase 2 solves this once the night is tied to a user account.
 
 ### History
+
+**2026-04-19 (later IV)** — Auth phase 2. Nights now link to users: `GameNight.CreatedByUserId` + `Voter.UserId` (both nullable, `OnDelete: SetNull`) populated when the actor is signed in, ignored otherwise. New `IGameNightService.ListForUserAsync(userId)` does a single SQL round-trip that returns every night the user hosts or votes in, with per-night distinct swipe count for the "vote missing" indicator. Home page grew a **Your nights** section with filter (All / Open / Closed / Needs-vote, All / Host / Voter) and sort (Smart / Nearest date / Recently created); smart sort puts open+missing-vote nights first, closed last. NightJoin prefills the display name with the signed-in username so the host doesn't retype. Migration `LinkNightsToUsers`. E2E test covers "created night appears in home list with Host badge."
 
 **2026-04-19 (later III)** — Auth phase 1 (local username + password). New `User` entity + `ExternalLogin` table (empty for now — the shape is here so Google/Apple drop in without a schema change). `PasswordHasher` is a self-contained PBKDF2-SHA256/600k-iter hasher (no Identity framework). Cookie auth scheme (`deslider-auth`, HttpOnly, 30-day sliding). New pages: `/register`, `/signin`, `/account` (change password + sign out). `/create` is `[Authorize]`-gated. Home CTA toggles via `<AuthorizeView>`; header shows the username (linked to `/account`) when signed in, "Sign in" otherwise. Migration `AddUsers`. Six E2E tests covering the full auth + create flow.
 

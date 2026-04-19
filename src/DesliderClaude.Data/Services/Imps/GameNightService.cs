@@ -16,7 +16,12 @@ internal sealed class GameNightService : IGameNightService
         _shareCodes = shareCodes;
     }
 
-    public async Task<GameNight> CreateAsync(string name, DateOnly? targetDate, IEnumerable<string> gameNames, CancellationToken ct = default)
+    public async Task<GameNight> CreateAsync(
+        string name,
+        DateOnly? targetDate,
+        IEnumerable<string> gameNames,
+        Guid? createdByUserId = null,
+        CancellationToken ct = default)
     {
         var shareCode = await GenerateUniqueShareCodeAsync(ct);
         var hostToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -27,12 +32,45 @@ internal sealed class GameNightService : IGameNightService
             TargetDate = targetDate,
             ShareCode = shareCode,
             HostToken = hostToken,
+            CreatedByUserId = createdByUserId,
             Games = gameNames.Select(n => new Game { Name = n }).ToList()
         };
 
         _db.GameNights.Add(night);
         await _db.SaveChangesAsync(ct);
         return night;
+    }
+
+    public async Task<IReadOnlyList<UserNightSummary>> ListForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        // One SQL query: every night where the user is host OR voter, plus their swipe count.
+        var rows = await _db.GameNights
+            .Where(n => n.CreatedByUserId == userId || n.Voters.Any(v => v.UserId == userId))
+            .Select(n => new
+            {
+                n.ShareCode,
+                n.Name,
+                n.TargetDate,
+                n.IsClosed,
+                n.ClosedAt,
+                n.CreatedAt,
+                IsHost = n.CreatedByUserId == userId,
+                IsVoter = n.Voters.Any(v => v.UserId == userId),
+                GameCount = n.Games.Count,
+                SwipesByViewer = n.Voters
+                    .Where(v => v.UserId == userId)
+                    .SelectMany(v => v.Swipes)
+                    .Select(s => s.GameId)
+                    .Distinct()
+                    .Count(),
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new UserNightSummary(
+                r.ShareCode, r.Name, r.TargetDate, r.IsClosed, r.ClosedAt, r.CreatedAt,
+                r.IsHost, r.IsVoter, r.GameCount, r.SwipesByViewer))
+            .ToList();
     }
 
     public Task<GameNight?> GetByShareCodeAsync(string shareCode, CancellationToken ct = default)

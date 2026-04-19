@@ -7,6 +7,12 @@ public class GameNight
     public DateOnly? TargetDate { get; set; }
     public string ShareCode { get; set; } = string.Empty;
     public string HostToken { get; set; } = string.Empty;
+
+    /// <summary>Set when the night is created by a signed-in user. Nullable to
+    /// keep the anonymous/legacy create path working.</summary>
+    public Guid? CreatedByUserId { get; set; }
+    public User? CreatedByUser { get; set; }
+
     public bool IsClosed { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ClosedAt { get; set; }

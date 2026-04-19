@@ -46,6 +46,7 @@
 
 @code {
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromForm] public CreateFormModel? Form { get; set; }
 
     private string? _error;
@@ -81,7 +82,14 @@
             targetDate = parsed;
         }
 
-        var night = await GameNights.CreateAsync(name, targetDate, games);
+        Guid? userId = null;
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            userId = state.User.GetUserId();
+        }
+
+        var night = await GameNights.CreateAsync(name, targetDate, games, userId);
 
         HttpContext.Response.Cookies.Append(
             HostCookie.Name(night.ShareCode),

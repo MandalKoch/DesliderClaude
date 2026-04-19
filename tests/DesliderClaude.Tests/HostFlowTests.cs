@@ -112,6 +112,21 @@ public sealed class HostFlowTests : PageTest
     }
 
     [Test]
+    public async Task Created_night_appears_in_home_list_with_host_badge()
+    {
+        await RegisterAndSignInAsync(NewUsername());
+
+        await Page.GotoAsync("/create");
+        await Page.GetByLabel("Night name").FillAsync("List-Check Night");
+        await Page.GetByLabel("Candidate games").FillAsync("A\nB\nC");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+
+        await Page.GotoAsync("/");
+        await Expect(Page.GetByText("List-Check Night")).ToBeVisibleAsync();
+        await Expect(Page.GetByText("Host", new() { Exact = true })).ToBeVisibleAsync();
+    }
+
+    [Test]
     public async Task Change_password_accepts_new_credentials_for_next_sign_in()
     {
         var username = NewUsername();

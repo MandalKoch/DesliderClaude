@@ -23,5 +23,11 @@ internal sealed class GameNightConfiguration : IEntityTypeConfiguration<GameNigh
             .WithOne(v => v.GameNight)
             .HasForeignKey(v => v.GameNightId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.CreatedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => x.CreatedByUserId);
     }
 }

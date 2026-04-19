@@ -17,5 +17,11 @@ internal sealed class VoterConfiguration : IEntityTypeConfiguration<Voter>
             .WithOne(s => s.Voter)
             .HasForeignKey(s => s.VoterId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => new { x.GameNightId, x.UserId });
     }
 }
