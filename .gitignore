@@ -1,3 +1,8 @@
+# ---- SQLite (dev DB files, never checked in) ----
+*.db
+*.db-shm
+*.db-wal
+
 # ---- .NET ----
 bin/
 obj/
