@@ -94,22 +94,35 @@ else
             <a class="btn btn-primary" href="/night/@ShareCode/swipe">Back to swiping →</a>
         }
         <a class="btn btn-ghost" href="/night/@ShareCode/winner">Tonight's pick →</a>
+        @if (_isHost)
+        {
+            <a class="btn btn-ghost" href="/night/@ShareCode/host">Host dashboard</a>
+        }
     </div>
 }
 
 @code {
     [Parameter] public string ShareCode { get; set; } = string.Empty;
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
 
     private GameNight? _night;
     private string? _voterToken;
     private VoterProgress? _progress;
     private int _voted;
+    private bool _isHost;
 
     protected override async Task OnInitializedAsync()
     {
         _night = await GameNights.GetByShareCodeAsync(ShareCode);
         if (_night is null) return;
+
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            var uid = state.User.GetUserId();
+            _isHost = uid is not null && _night.CreatedByUserId == uid;
+        }
 
         _voterToken = HttpContext?.Request.Cookies[VoterCookie.Name(ShareCode)];
         if (string.IsNullOrEmpty(_voterToken)) return;
