@@ -61,12 +61,17 @@ else
         </ol>
     }
 
-    @if (!_night.IsClosed)
-    {
-        <div class="btn-row">
+    <div class="btn-row">
+        @if (!_night.IsClosed)
+        {
             <a class="btn" href="/night/@ShareCode/swipe">← Back to swiping</a>
-        </div>
-    }
+            <a class="btn btn-ghost" href="/night/@ShareCode/winner">Current pick →</a>
+        }
+        else
+        {
+            <a class="btn btn-primary" href="/night/@ShareCode/winner">Tonight's pick →</a>
+        }
+    </div>
 }
 
 @code {

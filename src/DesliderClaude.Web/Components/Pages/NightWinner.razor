@@ -1,0 +1,105 @@
+@page "/night/{ShareCode}/winner"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
+@inject IVotingService Voting
+
+<PageTitle>Tonight's pick — @(_night?.Name ?? "Game Night")</PageTitle>
+
+@if (_night is null)
+{
+    <h1>Not found.</h1>
+    <p><a href="/">← Back home</a></p>
+}
+else if (_ranking.Count == 0)
+{
+    <div class="ranking-head">
+        <div>
+            <span class="kicker kicker-gold">Verdict</span>
+            <h1>@_night.Name</h1>
+        </div>
+    </div>
+    <div class="empty">No swipes were cast.</div>
+    <div class="btn-row">
+        <a class="btn" href="/">← Back home</a>
+    </div>
+}
+else
+{
+    var winner = _ranking[0];
+    var runnersUp = _ranking.Skip(1).ToList();
+
+    <div class="ranking-head">
+        <div>
+            <span class="kicker kicker-gold">Verdict</span>
+            <h1>@_night.Name</h1>
+        </div>
+        @if (_night.IsClosed)
+        {
+            <span class="ranking-status">Locked · @(_night.ClosedAt?.ToString("MMM d, HH:mm"))</span>
+        }
+        else
+        {
+            <span class="ranking-status live">Live leader</span>
+        }
+    </div>
+
+    <section class="winner-hero">
+        <span class="winner-hero-label">Tonight's pick</span>
+        <h2 class="winner-hero-name">@winner.Name</h2>
+        <div class="winner-hero-votes">
+            <span class="yes">+@winner.YesCount</span>
+            <span class="no">−@winner.NoCount</span>
+        </div>
+        @if (!_night.IsClosed)
+        {
+            <p class="winner-hero-hint">Voting is still open — the ranking can still shift.</p>
+        }
+    </section>
+
+    @if (runnersUp.Count > 0)
+    {
+        <h3 class="winner-runners-head">Runners-up</h3>
+        <ol class="ranking-list ranking-list-runners">
+            @foreach (var row in runnersUp)
+            {
+                <li>
+                    <span class="ranking-name">@row.Name</span>
+                    <span class="ranking-votes">
+                        <span class="yes">+@row.YesCount</span>
+                        <span class="no">−@row.NoCount</span>
+                    </span>
+                </li>
+            }
+        </ol>
+    }
+
+    <div class="btn-row">
+        @if (!_night.IsClosed)
+        {
+            <a class="btn btn-cyan" href="/night/@ShareCode/swipe">← Keep swiping</a>
+            <a class="btn" href="/night/@ShareCode/ranking">Full ranking</a>
+        }
+        else
+        {
+            <a class="btn" href="/night/@ShareCode/ranking">Full ranking</a>
+            <a class="btn btn-ghost" href="/">← Back home</a>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+
+    private GameNight? _night;
+    private IReadOnlyList<GameRanking> _ranking = Array.Empty<GameRanking>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _night = await GameNights.GetByShareCodeAsync(ShareCode);
+        if (_night is null) return;
+        _ranking = await Voting.GetRankingAsync(_night.Id);
+        // Only show a "winner" when there are actual yes votes — otherwise fall back to runner-up list display.
+        _ranking = _ranking.Where(r => r.YesCount + r.NoCount > 0).ToList();
+    }
+}

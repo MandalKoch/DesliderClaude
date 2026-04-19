@@ -22,32 +22,43 @@ else if (_voterToken is null)
 }
 else if (_currentGame is null)
 {
-    <span class="mono">All done</span>
-    <h1>Nice work, @(_progress?.DisplayName).</h1>
-    <p class="subtle">You've swiped on every game in @_night.Name. Swing by the ranking to see how the group's leaning.</p>
-    <div class="btn-row">
-        <a class="btn btn-primary" href="/night/@ShareCode/ranking">See the live ranking →</a>
+    @* Only reachable when the night has zero games on it. *@
+    <h1>@_night.Name</h1>
+    <div class="notice">
+        <p><strong>No games on this night yet.</strong></p>
+        <p>Ask the host to add some candidate games, then come back.</p>
     </div>
 }
 else
 {
     <div class="swipe-wrap">
         <div class="swipe-progress">
-            <span class="swipe-progress-label"><strong>@(_swipedCount + 1)</strong> / @_night.Games.Count</span>
+            @if (_unvoted > 0)
+            {
+                <span class="swipe-progress-label">
+                    <strong>@(_night.Games.Count - _unvoted)</strong> / @_night.Games.Count discovered
+                </span>
+            }
+            else
+            {
+                <span class="swipe-progress-label">
+                    <strong>@_swipeCount</strong> swipes · all explored
+                </span>
+            }
             <span class="swipe-progress-bar">
-                <span class="swipe-progress-fill" style="transform: scaleX(@(((double)_swipedCount / _night.Games.Count).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)))"></span>
+                <span class="swipe-progress-fill" style="transform: scaleX(@_progressRatio)"></span>
             </span>
         </div>
 
         <div class="swipe-stage">
             <article class="swipe-card" data-swipe-card>
                 <div class="swipe-card-corners"></div>
-                <div class="swipe-card-label">candidate</div>
+                <div class="swipe-card-label">@_cardLabel</div>
                 <h1 class="swipe-card-title">@_currentGame.Name</h1>
                 <span class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">Deploy</span>
                 <span class="swipe-stamp swipe-stamp-no" data-swipe-overlay-no aria-hidden="true">Pass</span>
             </article>
-            <p class="swipe-hint" aria-hidden="true">Drag the card · or use the buttons</p>
+            <p class="swipe-hint" aria-hidden="true">Drag the card · or use the buttons · swipes update live</p>
         </div>
 
         <form method="post" @formname="swipe" @onsubmit="RecordAsync" data-swipe-form>
@@ -64,7 +75,7 @@ else
         </form>
 
         <div class="swipe-footlinks">
-            <a href="/night/@ShareCode/ranking">Peek at the ranking →</a>
+            <a href="/night/@ShareCode/ranking">Peek at the ranking</a>
         </div>
     </div>
 }
@@ -78,7 +89,10 @@ else
     private string? _voterToken;
     private VoterProgress? _progress;
     private Game? _currentGame;
-    private int _swipedCount;
+    private int _swipeCount;
+    private int _unvoted;
+    private string _progressRatio = "0";
+    private string _cardLabel = "candidate";
 
     protected override async Task OnInitializedAsync()
     {
@@ -87,7 +101,7 @@ else
 
         if (_night.IsClosed)
         {
-            Nav.NavigateTo($"/night/{ShareCode}/ranking");
+            Nav.NavigateTo($"/night/{ShareCode}/winner");
             return;
         }
 
@@ -101,16 +115,30 @@ else
             return;
         }
 
-        if (Form is { GameId: var gameId } && gameId != Guid.Empty && _currentGame is null)
+        Guid? justSwipedGameId = null;
+        if (Form is { GameId: var gameId } && gameId != Guid.Empty)
         {
-            // Form POST just arrived — record this swipe before picking the next game.
+            // Form POST just arrived — upsert this swipe before picking the next game.
             await Voting.RecordSwipeAsync(_voterToken, gameId, Form.Yes);
             _progress = await Voting.GetProgressAsync(_voterToken);
+            justSwipedGameId = gameId;
         }
 
-        var sortedGames = _night.Games.OrderBy(g => g.Id).ToList();
-        _swipedCount = _progress!.Swipes.Count;
-        _currentGame = sortedGames.FirstOrDefault(g => !_progress.Swipes.ContainsKey(g.Id));
+        _swipeCount = _progress!.Swipes.Count;
+        _unvoted = Math.Max(0, _night.Games.Count - _progress.Swipes.Count);
+        _currentGame = await Voting.PickNextGameAsync(_voterToken, justSwipedGameId);
+
+        if (_currentGame is not null)
+        {
+            var gameWasSwiped = _progress.Swipes.ContainsKey(_currentGame.Id);
+            _cardLabel = gameWasSwiped ? "re-roll" : "candidate";
+        }
+
+        if (_night.Games.Count > 0)
+        {
+            var ratio = (double)(_night.Games.Count - _unvoted) / _night.Games.Count;
+            _progressRatio = ratio.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        }
     }
 
     private Task RecordAsync() => Task.CompletedTask; // all logic runs in OnInitializedAsync after the POST rerenders the page
