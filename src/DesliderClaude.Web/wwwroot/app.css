@@ -599,7 +599,10 @@ a:hover { color: var(--text); border-color: var(--cyan); }
 .admin-table .right { text-align: right; }
 .admin-table form { display: inline; margin: 0; }
 .admin-row-link { font-weight: 600; color: var(--text); }
-.admin-row-sub { font-family: var(--font-hud); font-size: 0.7rem; letter-spacing: 0.1em; }
+.admin-row-link:hover { color: var(--cyan); }
+.admin-row-sub { font-family: var(--font-hud); font-size: 0.7rem; letter-spacing: 0.1em; color: var(--text-muted); }
+.admin-row-sub:hover { color: var(--cyan); }
+.admin-row-links { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap; }
 
 main.page {
     max-width: 680px;

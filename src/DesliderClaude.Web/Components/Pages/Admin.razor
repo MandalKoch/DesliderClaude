@@ -78,8 +78,14 @@ else
                 {
                     <tr>
                         <td>
-                            <a href="/night/@n.ShareCode/host" class="admin-row-link">@n.Name</a>
-                            <div class="subtle admin-row-sub">@n.ShareCode</div>
+                            <a href="/night/@n.ShareCode/winner" class="admin-row-link">@n.Name</a>
+                            <div class="admin-row-links">
+                                <a href="/night/@n.ShareCode" class="admin-row-sub" title="Voter entry">@n.ShareCode</a>
+                                <span class="subtle">·</span>
+                                <a href="/night/@n.ShareCode/host" class="admin-row-sub" title="Host dashboard (works for the creator)">host</a>
+                                <span class="subtle">·</span>
+                                <a href="/night/@n.ShareCode/winner" class="admin-row-sub" title="Winner / ranking">winner</a>
+                            </div>
                         </td>
                         <td>@(n.HostUsername ?? "—")</td>
                         <td class="right">@n.GameCount</td>
