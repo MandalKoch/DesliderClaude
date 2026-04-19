@@ -92,19 +92,33 @@ else
         {
             <a class="btn btn-ghost" href="/">← Back home</a>
         }
+        @if (_isHost)
+        {
+            <a class="btn btn-ghost" href="/night/@ShareCode/host">Host dashboard</a>
+        }
     </div>
 }
 
 @code {
     [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
 
     private GameNight? _night;
     private IReadOnlyList<GameRanking> _ranking = Array.Empty<GameRanking>();
+    private bool _isHost;
 
     protected override async Task OnInitializedAsync()
     {
         _night = await GameNights.GetByShareCodeAsync(ShareCode);
         if (_night is null) return;
+
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            var uid = state.User.GetUserId();
+            _isHost = uid is not null && _night.CreatedByUserId == uid;
+        }
+
         _ranking = await Voting.GetRankingAsync(_night.Id);
         // Only show a "winner" when there are actual yes votes — otherwise fall back to runner-up list display.
         _ranking = _ranking.Where(r => r.YesCount + r.NoCount > 0).ToList();

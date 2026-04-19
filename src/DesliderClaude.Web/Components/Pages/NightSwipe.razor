@@ -76,6 +76,10 @@ else
         <div class="swipe-footlinks">
             <a href="/night/@ShareCode/votes">My votes</a>
             <a href="/night/@ShareCode/winner">Peek at the pick</a>
+            @if (_isHost)
+            {
+                <a href="/night/@ShareCode/host">Host dashboard</a>
+            }
         </div>
     </div>
 }
@@ -83,6 +87,7 @@ else
 @code {
     [Parameter] public string ShareCode { get; set; } = string.Empty;
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromForm] public SwipeFormModel? Form { get; set; }
 
     private GameNight? _night;
@@ -91,15 +96,25 @@ else
     private Game? _currentGame;
     private int _swipeCount;
     private string _progressRatio = "0";
+    private bool _isHost;
 
     protected override async Task OnInitializedAsync()
     {
         _night = await GameNights.GetByShareCodeAsync(ShareCode);
         if (_night is null) return;
 
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            var uid = state.User.GetUserId();
+            _isHost = uid is not null && _night.CreatedByUserId == uid;
+        }
+
         if (_night.IsClosed)
         {
-            Nav.NavigateTo($"/night/{ShareCode}/winner");
+            Nav.NavigateTo(_isHost
+                ? $"/night/{ShareCode}/host"
+                : $"/night/{ShareCode}/winner");
             return;
         }
 
