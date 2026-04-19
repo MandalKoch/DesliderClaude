@@ -79,6 +79,7 @@ TBD — decide later.
 - [ ] Filters: "only games for 4+ players", "under 60 min", etc.
 - [ ] **Winner-by-subset on `/winner`**: pick a subset of voters (e.g. "only A + B") and see the ranking / top pick computed from just their swipes. Useful when a smaller subgroup is actually playing tonight. Default stays "all voters".
 - [ ] **Ranking tie-breaker via BGG stats**: when two games tie on yes-count, break the tie by BGG rating (higher wins) if we have it cached, otherwise fall back to the current alphabetical tiebreaker. Decides Open Question 3.
+- [ ] **Donate button** in the footer (Ko-fi / Buy-Me-a-Coffee / GitHub Sponsors link). Covers hosting + signals "this is hobby, not commercial" which keeps the BGG API use and the game-image hotlinking on solid ground.
 
 ### v2
 - [ ] OAuth login for hosts (GitHub/Google) — replaces the lightweight host token
