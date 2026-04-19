@@ -27,6 +27,10 @@ else
             <span class="kicker">My votes</span>
             <h1>@_night.Name</h1>
             <p class="subtle">@_voted / @_night.Games.Count voted</p>
+            @if (_isHost)
+            {
+                <a class="btn btn-ghost btn-sm" href="/night/@ShareCode/host">Host dashboard →</a>
+            }
         </div>
         @if (_night.IsClosed)
         {
@@ -94,10 +98,6 @@ else
             <a class="btn btn-primary" href="/night/@ShareCode/swipe">Back to swiping →</a>
         }
         <a class="btn btn-ghost" href="/night/@ShareCode/winner">Tonight's pick →</a>
-        @if (_isHost)
-        {
-            <a class="btn btn-ghost" href="/night/@ShareCode/host">Host dashboard</a>
-        }
     </div>
 }
 

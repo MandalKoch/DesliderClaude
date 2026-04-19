@@ -41,6 +41,10 @@ else
         <div>
             <span class="kicker kicker-gold">Verdict</span>
             <h1>@_night.Name</h1>
+            @if (_isHost)
+            {
+                <a class="btn btn-ghost btn-sm" href="/night/@ShareCode/host">Host dashboard →</a>
+            }
         </div>
         @if (_night.IsClosed)
         {
@@ -91,10 +95,6 @@ else
         else
         {
             <a class="btn btn-ghost" href="/">← Back home</a>
-        }
-        @if (_isHost)
-        {
-            <a class="btn btn-ghost" href="/night/@ShareCode/host">Host dashboard</a>
         }
     </div>
 }
