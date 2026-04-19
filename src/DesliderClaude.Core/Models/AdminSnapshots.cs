@@ -36,3 +36,11 @@ public sealed record GamePopularityRow(string Name, int YesCount, int NoCount)
 {
     public int TotalVotes => YesCount + NoCount;
 }
+
+public sealed record AdminVoterRow(
+    Guid Id,
+    string DisplayName,
+    string? Username,
+    int SwipeCount,
+    int YesCount,
+    int NoCount);

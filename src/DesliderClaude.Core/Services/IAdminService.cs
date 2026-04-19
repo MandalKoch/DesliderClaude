@@ -22,4 +22,10 @@ public interface IAdminService
     /// <summary>Close voting on a Game Night without needing the host token. No-op
     /// if the night is already closed.</summary>
     Task CloseNightAsync(Guid nightId, CancellationToken ct = default);
+
+    /// <summary>List voters on a specific night with per-voter activity.</summary>
+    Task<IReadOnlyList<AdminVoterRow>> ListVotersForNightAsync(Guid nightId, CancellationToken ct = default);
+
+    /// <summary>Hard-delete a voter (cascades their swipes).</summary>
+    Task DeleteVoterAsync(Guid voterId, CancellationToken ct = default);
 }

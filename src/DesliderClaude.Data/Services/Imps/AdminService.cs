@@ -129,6 +129,29 @@ internal sealed partial class AdminService : IAdminService
         LogNightDeleted(nightId, night.ShareCode);
     }
 
+    public async Task<IReadOnlyList<AdminVoterRow>> ListVotersForNightAsync(Guid nightId, CancellationToken ct = default)
+    {
+        return await _db.Voters
+            .Where(v => v.GameNightId == nightId)
+            .Select(v => new AdminVoterRow(
+                v.Id,
+                v.DisplayName,
+                v.User == null ? null : v.User.Username,
+                v.Swipes.Count,
+                v.Swipes.Count(s => s.Yes),
+                v.Swipes.Count(s => !s.Yes)))
+            .ToListAsync(ct);
+    }
+
+    public async Task DeleteVoterAsync(Guid voterId, CancellationToken ct = default)
+    {
+        var voter = await _db.Voters.FirstOrDefaultAsync(v => v.Id == voterId, ct)
+            ?? throw new InvalidOperationException("Voter not found.");
+        _db.Voters.Remove(voter);
+        await _db.SaveChangesAsync(ct);
+        LogVoterDeleted(voterId, voter.DisplayName, voter.GameNightId);
+    }
+
     public async Task CloseNightAsync(Guid nightId, CancellationToken ct = default)
     {
         var night = await _db.GameNights.FirstOrDefaultAsync(n => n.Id == nightId, ct)
@@ -151,4 +174,8 @@ internal sealed partial class AdminService : IAdminService
     [LoggerMessage(EventId = 3003, Level = LogLevel.Warning,
         Message = "Admin closed game night {NightId} ({ShareCode})")]
     private partial void LogNightClosed(Guid nightId, string shareCode);
+
+    [LoggerMessage(EventId = 3004, Level = LogLevel.Warning,
+        Message = "Admin deleted voter {VoterId} ({DisplayName}) from night {NightId}")]
+    private partial void LogVoterDeleted(Guid voterId, string displayName, Guid nightId);
 }
