@@ -866,48 +866,55 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
     z-index: 1;
 }
 
-/* drag stamps — single bordered badge in the top corner, sized up from the
-   original so it reads at a glance without eclipsing the card. */
+/* drag stamps — centered verdict over a blurred card.
+   Content behind (title / label / corners) goes out of focus during drag,
+   the stamp itself stays crisp on top. */
 .swipe-stamp {
     position: absolute;
-    top: clamp(var(--s-5), 8%, 3rem);
+    top: 50%;
+    left: 50%;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
+    gap: clamp(0.4rem, 1.2vw, 0.75rem);
     font-family: var(--font-hud);
     font-weight: 800;
     text-transform: uppercase;
-    padding: 0.5rem 1.1rem 0.45rem;
-    border: 3px solid currentColor;
     opacity: 0;
     pointer-events: none;
-    z-index: 2;
+    z-index: 3;
     user-select: none;
-    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-    background: rgba(5, 8, 24, 0.65);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    box-shadow: 0 0 22px -2px currentColor;
 }
 .swipe-stamp-icon {
-    font-size: clamp(2rem, 7vw, 3rem);
-    line-height: 1;
+    font-size: clamp(5rem, 22vw, 9rem);
+    line-height: 0.9;
+    text-shadow: 0 0 28px currentColor;
 }
 .swipe-stamp-label {
-    font-size: clamp(1.5rem, 5.5vw, 2.25rem);
-    letter-spacing: 0.28em;
+    font-size: clamp(1.75rem, 6vw, 2.75rem);
+    letter-spacing: 0.3em;
+    padding: 0.3rem 1.25rem 0.25rem;
+    border: 3px solid currentColor;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    box-shadow: 0 0 22px -4px currentColor;
 }
 .swipe-stamp-yes {
-    right: var(--s-5);
     color: var(--cyan);
-    transform: rotate(-10deg);
-    text-shadow: 0 0 16px var(--cyan-glow);
+    transform: translate(-50%, -50%) rotate(-8deg);
+    text-shadow: 0 0 28px var(--cyan-glow);
 }
 .swipe-stamp-no {
-    left: var(--s-5);
     color: var(--crimson);
-    transform: rotate(10deg);
-    text-shadow: 0 0 16px var(--crimson-glow);
+    transform: translate(-50%, -50%) rotate(8deg);
+    text-shadow: 0 0 28px var(--crimson-glow);
+}
+
+/* Blur the card contents while dragging so the stamp pops. */
+.swipe-card.is-dragging .swipe-card-label,
+.swipe-card.is-dragging .swipe-card-title,
+.swipe-card.is-dragging .swipe-card-corners {
+    filter: blur(6px);
+    transition: filter 0.18s ease-out;
 }
 
 .swipe-actions {
