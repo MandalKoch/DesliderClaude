@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IGameNightService GameNights
+@inject INightNameGenerator NightNames
 @inject NavigationManager Nav
 
 <PageTitle>Create Game Night — DesliderClaude</PageTitle>
@@ -21,11 +22,11 @@
         <AntiforgeryToken />
 
         <label for="night-name">Night name</label>
-        <input id="night-name" name="Form.Name" value="@Form?.Name" maxlength="200"
+        <input id="night-name" name="Form.Name" value="@(Form?.Name ?? _defaultName)" maxlength="200"
                placeholder="Friday boardgames" autocomplete="off" required autofocus />
 
         <label for="target-date">Target date <span class="subtle">(optional)</span></label>
-        <input id="target-date" name="Form.TargetDate" value="@Form?.TargetDate" type="date" />
+        <input id="target-date" name="Form.TargetDate" value="@(Form?.TargetDate ?? _defaultDate)" type="date" />
 
         <label for="games">Candidate games <span class="subtle">(one per line — at least two)</span></label>
         <textarea id="games" name="Form.Games" rows="8"
@@ -50,8 +51,16 @@
     [SupplyParameterFromForm] public CreateFormModel? Form { get; set; }
 
     private string? _error;
+    private string _defaultName = string.Empty;
+    private string _defaultDate = string.Empty;
 
     private const string GamesPlaceholder = "Catan\nAzul\nWingspan\nTerraforming Mars";
+
+    protected override void OnInitialized()
+    {
+        _defaultName = NightNames.Generate();
+        _defaultDate = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+    }
 
     private async Task CreateAsync()
     {

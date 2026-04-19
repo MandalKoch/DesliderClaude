@@ -12,6 +12,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddDbContext<DesliderClaudeDbContext>(opt => opt.UseSqlite(connectionString));
         services.AddSingleton<IShareCodeGenerator, HaikunatorShareCodeGenerator>();
+        services.AddSingleton<INightNameGenerator, RandomNightNameGenerator>();
         services.AddScoped<IGameNightService, GameNightService>();
         services.AddScoped<IVotingService, VotingService>();
         services.AddScoped<IUserService, UserService>();
