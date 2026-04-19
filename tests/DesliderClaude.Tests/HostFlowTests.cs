@@ -112,6 +112,29 @@ public sealed class HostFlowTests : PageTest
     }
 
     [Test]
+    public async Task Signed_in_voter_skips_the_join_prompt_and_goes_straight_to_swipe()
+    {
+        await RegisterAndSignInAsync(NewUsername());
+        await Page.GotoAsync("/create");
+        await Page.GetByLabel("Night name").FillAsync("Auto-Join Night");
+        await Page.GetByLabel("Candidate games").FillAsync("A\nB\nC");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+        var hostUrl = Page.Url;
+        var shareCode = new Uri(hostUrl).AbsolutePath.Split('/')[2];
+
+        // Sign out the host.
+        await Page.GotoAsync("/account");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+
+        // Sign in as a fresh voter account.
+        await RegisterAndSignInAsync(NewUsername());
+
+        // Land on the share URL — should skip /night/{code} join and drop us on /swipe.
+        await Page.GotoAsync($"/night/{shareCode}");
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{shareCode}/swipe$"));
+    }
+
+    [Test]
     public async Task Created_night_appears_in_home_list_with_host_badge()
     {
         await RegisterAndSignInAsync(NewUsername());

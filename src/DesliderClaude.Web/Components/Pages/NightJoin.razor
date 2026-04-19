@@ -57,23 +57,48 @@ else
     protected override async Task OnInitializedAsync()
     {
         _night = await GameNights.GetByShareCodeAsync(ShareCode);
-        if (_night is null || HttpContext is null) return;
+        if (_night is null || HttpContext is null || _night.IsClosed) return;
 
-        var existingToken = HttpContext.Request.Cookies[VoterCookie.Name(ShareCode)];
+        var cookieName = VoterCookie.Name(ShareCode);
+        var existingToken = HttpContext.Request.Cookies[cookieName];
+
+        // 1. Already joined this night? Jump straight to swiping.
         if (!string.IsNullOrEmpty(existingToken))
         {
             var progress = await Voting.GetProgressAsync(existingToken);
             if (progress?.GameNightId == _night.Id)
             {
-                _prefill = progress.DisplayName;
+                Nav.NavigateTo($"/night/{ShareCode}/swipe");
+                return;
             }
         }
 
-        // Fall back to the signed-in username so the host doesn't have to retype.
-        if (string.IsNullOrEmpty(_prefill) && AuthState is not null)
+        // 2. Signed-in voter? Auto-join with their username — no prompt needed.
+        if (AuthState is not null)
         {
             var state = await AuthState;
-            _prefill = state.User.GetUsername() ?? string.Empty;
+            var username = state.User.GetUsername();
+            var userId = state.User.GetUserId();
+            if (!string.IsNullOrEmpty(username) && userId is { } uid)
+            {
+                var token = existingToken;
+                if (string.IsNullOrEmpty(token))
+                {
+                    token = VoterCookie.NewToken();
+                    HttpContext.Response.Cookies.Append(cookieName, token, VoterCookie.Options);
+                }
+                try
+                {
+                    await Voting.JoinAsync(_night.Id, username, token, uid);
+                    Nav.NavigateTo($"/night/{ShareCode}/swipe");
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Fall through to the manual form (e.g. token already bound to another night).
+                }
+                _prefill = username;
+            }
         }
     }
 
