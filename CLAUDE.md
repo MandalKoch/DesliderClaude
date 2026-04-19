@@ -77,6 +77,7 @@ TBD — decide later.
 - [ ] Tournament bracket mode
 - [ ] Game Night history for host
 - [ ] Filters: "only games for 4+ players", "under 60 min", etc.
+- [ ] **Winner-by-subset on `/winner`**: pick a subset of voters (e.g. "only A + B") and see the ranking / top pick computed from just their swipes. Useful when a smaller subgroup is actually playing tonight. Default stays "all voters".
 
 ### v2
 - [ ] OAuth login for hosts (GitHub/Google) — replaces the lightweight host token
