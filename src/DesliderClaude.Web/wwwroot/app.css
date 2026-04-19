@@ -1260,9 +1260,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
 }
 .ranking-list li.winner .ranking-name { font-size: 1.25rem; }
 .ranking-list li.winner .winner-badge {
+    /* Parent li uses clip-path for the corner cut, which also clips any
+       child that tries to escape the card — so the badge lives inside. */
     position: absolute;
-    top: -11px;
-    right: calc(var(--s-5) + 10px);
+    top: 10px;
+    right: var(--s-5);
     font-family: var(--font-hud);
     font-size: 0.6875rem;
     font-weight: 700;
