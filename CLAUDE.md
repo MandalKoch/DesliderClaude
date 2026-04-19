@@ -121,8 +121,38 @@ DesliderClaude.slnx
 - **Generate Guids with `Guid.CreateVersion7()`** (RFC 9562 UUID v7), never `Guid.NewGuid()` (v4). v7 is time-ordered, so inserts preserve B-tree index locality and IDs are chronologically sortable. Applies to every entity PK and any other Guid we mint.
 - **`README.md` is the public marketing page, not a mirror of this file.** It describes what DesliderClaude *is* to end users — the product story, how it feels to use. Only update `README.md` when the product story itself changes (new user-facing concept, rename, repositioning). Architecture / structure / convention / status changes stay in `CLAUDE.md` and do **not** require a README update.
 - **Credit what we use.** When a third-party library, Claude Code skill, or external source materially shapes code we ship, credit it. Add a short line to `README.md` (footer area) linking out — author name + project/site URL. Examples already in the tree: [Haikunator](https://github.com/Atrox/haikunator) (share-code generation), the `emil-design-eng` skill / [Emil Kowalski](https://animations.dev/) (swipe-gesture polish). This rule is a product-story change (it's user-visible acknowledgement), so updating the README *is* warranted — one of the few exceptions to the rule above.
+- Before you commit run `dotnet format` to format your code.
+- Before you push run `dotnet format --check` to check formatting.
+- Before you push run all tests with `dotnet test`.
+- **Commit message style:** Use imperative mood, present tense, and focus on what the commit does, not what it fixes. Examples: "Add feature X", "Fix bug Y", "Refactor Z for clarity". Avoid "Fixes #123" in the commit message itself, as it's redundant with GitHub's auto-linking.
 
 ## Status
+
+### Where we are (as of 2026-04-19)
+
+**Product** — the full MVP loop works end-to-end and is live at [desliderclaude.fly.dev](https://desliderclaude.fly.dev/):
+
+- Home page → "Host a new night →" opens `/create` (name, optional date, one-per-line game list). Submit mints a `GameNight` + `HostToken`, drops a `deslider-host-{shareCode}` cookie, redirects to `/night/{shareCode}/host`.
+- Host dashboard — share URL with copy button, live counters (voters / games / swipes), compact ranking snapshot (10 s meta-refresh while open), **Close voting** button. Cookie-gated: no cookie / mismatch → "Not your night" screen.
+- Voter loop unchanged — `/night/{shareCode}` join → `/swipe` continuous weighted-random deck → `/ranking` live standings → `/winner` hero view. Closing voting flips every voter's swipe screen to the winner.
+- Swipe UI is still static SSR + enhanced navigation; pointer-drag gesture via `wwwroot/swipe.js`.
+
+**Infra**
+- Single-region Fly.io machine (`fra`) fronted by the automatic-HTTPS proxy; SQLite on a 1 GB mounted volume at `/data`. EF migrations apply on Web startup.
+- GitHub Actions (`.github/workflows/fly-deploy.yml`) auto-deploys on push to `main` via `superfly/flyctl-actions`; `FLY_API_TOKEN` repo secret holds an app-scoped deploy token (1-year expiry).
+- `main` is protected — PR-required + verified-signatures ruleset (owner bypass enabled).
+- Licensed Apache 2.0.
+
+**Tests** — `tests/DesliderClaude.Tests/` (NUnit + Playwright) drives the host flow end-to-end in real Chromium. `dotnet test` is a one-liner after the first-time `playwright install chromium`.
+
+**Next up** — PWA manifest + service worker (Add-to-Home-Screen); then SignalR to replace the 5 s ranking refresh and the 10 s host-dashboard refresh; then host history (`/host/history`) listing past nights.
+
+**Still deferred / TBD**
+- Ranking tie-breaker rule (Open Question 3) — right now it's `ORDER BY YesCount DESC, Name ASC`, so alphabetical on ties. Good enough for MVP.
+- Proper host identity — still the lightweight cookie. v2 swaps in OAuth.
+- Host has no way to recover a lost cookie today. Survivable for friends-group MVP; revisit before any broader launch.
+
+### History
 
 **2026-04-19 (later II)** — Playwright E2E tests added. `tests/DesliderClaude.Tests/` is an NUnit project using `Microsoft.Playwright.NUnit` + `Microsoft.AspNetCore.Mvc.Testing`. `WebAppFixture` is a `WebApplicationFactory<Program>` that builds **two** hosts on `CreateHost` — a TestServer one for the factory's internals and a real Kestrel one bound to a random loopback port for Playwright to hit (canonical workaround for dotnet/aspnetcore#33846). Each fixture uses an ephemeral SQLite file under `%TEMP%/desliderclaude-test-*.db`. `HostFlowTests` covers the happy path (create → dashboard → close) and cookie-gating (fresh browser context hitting the host URL gets "Not your night"). `public partial class Program;` added to `Web/Program.cs` so the factory can reference it. First-time setup: `pwsh tests/DesliderClaude.Tests/bin/Debug/net10.0/playwright.ps1 install chromium`, then `dotnet test`.
 
@@ -136,4 +166,3 @@ DesliderClaude.slnx
 - Sample data: share code `sample-night`, three voters (Alice, Bob, Cara), six games, a mix of pre-swiped votes.
 - Voter flow live: `/night/{shareCode}` join (sets per-Night cookie), `/night/{shareCode}/swipe` **continuous** yes/no loop with weighted-random next-game selection, `/night/{shareCode}/ranking` meta-refresh live standings, `/night/{shareCode}/winner` celebratory top-pick view. All static SSR — swipe uses form POSTs + Blazor enhanced navigation so the transitions feel smooth without full reloads.
 - Swipe gesture: pointer-based drag (translate + rotate, velocity fling), HUD-stamp overlays, enter/exit animations re-inited on `Blazor.enhancedload`. Buttons remain as the primary/a11y path. `wwwroot/swipe.js` is the whole implementation.
-- Next step: PWA manifest + service worker (Add-to-Home-Screen); then SignalR to replace the 5-second meta-refresh on the ranking page and the 10-second refresh on the host dashboard.
