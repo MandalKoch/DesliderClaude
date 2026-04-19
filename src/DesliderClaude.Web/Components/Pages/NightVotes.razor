@@ -1,0 +1,140 @@
+@page "/night/{ShareCode}/votes"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
+@inject IVotingService Voting
+@inject NavigationManager Nav
+
+<PageTitle>My votes — @(_night?.Name ?? "Game Night")</PageTitle>
+
+@if (_night is null)
+{
+    <h1>Not found.</h1>
+    <p><a href="/">← Back home</a></p>
+}
+else if (_voterToken is null)
+{
+    <h1>@_night.Name</h1>
+    <div class="notice">
+        <p><strong>You need to join before you can see your votes.</strong></p>
+        <p><a href="/night/@ShareCode">Enter your name →</a></p>
+    </div>
+}
+else
+{
+    <div class="ranking-head">
+        <div>
+            <span class="kicker">My votes</span>
+            <h1>@_night.Name</h1>
+            <p class="subtle">@_voted / @_night.Games.Count voted</p>
+        </div>
+        @if (_night.IsClosed)
+        {
+            <span class="ranking-status">Closed</span>
+        }
+    </div>
+
+    <ul class="votes-list">
+        @foreach (var game in _night.Games.OrderBy(g => g.Name))
+        {
+            bool? voteValue = _progress is not null && _progress.Swipes.TryGetValue(game.Id, out var v) ? v : null;
+            var hasVote = voteValue is not null;
+            var yes = voteValue == true;
+            <li class="votes-row @(hasVote ? (yes ? "is-yes" : "is-no") : "is-unvoted")">
+                <div class="votes-row-main">
+                    <span class="votes-row-name">@game.Name</span>
+                    <span class="votes-row-status">
+                        @if (!hasVote)
+                        {
+                            <span class="votes-badge unvoted">Not voted</span>
+                        }
+                        else if (yes)
+                        {
+                            <span class="votes-badge yes">Yes</span>
+                        }
+                        else
+                        {
+                            <span class="votes-badge no">No</span>
+                        }
+                    </span>
+                </div>
+                @if (!_night.IsClosed)
+                {
+                    <div class="votes-row-actions">
+                        @if (!hasVote || !yes)
+                        {
+                            <form method="post" @formname="@($"set-yes-{game.Id}")" @onsubmit="() => SetAsync(game.Id, true)">
+                                <AntiforgeryToken />
+                                <button type="submit" class="btn btn-cyan btn-sm">Yes</button>
+                            </form>
+                        }
+                        @if (!hasVote || yes)
+                        {
+                            <form method="post" @formname="@($"set-no-{game.Id}")" @onsubmit="() => SetAsync(game.Id, false)">
+                                <AntiforgeryToken />
+                                <button type="submit" class="btn btn-ghost btn-sm">No</button>
+                            </form>
+                        }
+                        @if (hasVote)
+                        {
+                            <form method="post" @formname="@($"clear-{game.Id}")" @onsubmit="() => ClearAsync(game.Id)">
+                                <AntiforgeryToken />
+                                <button type="submit" class="btn btn-ghost btn-sm" title="Remove this vote">✕</button>
+                            </form>
+                        }
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+
+    <div class="btn-row" style="margin-top: var(--s-6);">
+        @if (!_night.IsClosed && _voted < _night.Games.Count)
+        {
+            <a class="btn btn-primary" href="/night/@ShareCode/swipe">Back to swiping →</a>
+        }
+        <a class="btn btn-ghost" href="/night/@ShareCode/ranking">Live ranking →</a>
+    </div>
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+
+    private GameNight? _night;
+    private string? _voterToken;
+    private VoterProgress? _progress;
+    private int _voted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _night = await GameNights.GetByShareCodeAsync(ShareCode);
+        if (_night is null) return;
+
+        _voterToken = HttpContext?.Request.Cookies[VoterCookie.Name(ShareCode)];
+        if (string.IsNullOrEmpty(_voterToken)) return;
+
+        _progress = await Voting.GetProgressAsync(_voterToken);
+        if (_progress is null || _progress.GameNightId != _night.Id)
+        {
+            _voterToken = null;
+            return;
+        }
+
+        _voted = _progress.Swipes.Count;
+    }
+
+    private async Task SetAsync(Guid gameId, bool yes)
+    {
+        if (_voterToken is null || _night?.IsClosed != false) return;
+        await Voting.RecordSwipeAsync(_voterToken, gameId, yes);
+        Nav.NavigateTo($"/night/{ShareCode}/votes");
+    }
+
+    private async Task ClearAsync(Guid gameId)
+    {
+        if (_voterToken is null || _night?.IsClosed != false) return;
+        await Voting.RemoveSwipeAsync(_voterToken, gameId);
+        Nav.NavigateTo($"/night/{ShareCode}/votes");
+    }
+}

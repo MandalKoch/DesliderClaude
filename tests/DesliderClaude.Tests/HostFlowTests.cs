@@ -170,6 +170,41 @@ public sealed class HostFlowTests : PageTest
     }
 
     [Test]
+    public async Task Voter_can_change_and_remove_votes_from_management_page()
+    {
+        // Host signs in, creates a night, signs out.
+        await RegisterAndSignInAsync(NewUsername());
+        var shareCode = await CreateNightAsHostAsync("Votes Page Test", "Alpha\nBeta\nGamma");
+        await Page.GotoAsync("/account");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+
+        // Same browser, now anonymous: join and swipe every game.
+        await Page.GotoAsync($"/night/{shareCode}");
+        await Page.GetByLabel("Your callsign").FillAsync("Voter Vee");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+
+        for (int i = 0; i < 3; i++)
+        {
+            await Page.Locator("button[name='Form.Yes'][value='true']").First.ClickAsync();
+            await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        }
+
+        // After the 3rd swipe the server auto-bounces to the votes management page.
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{shareCode}/votes$"));
+        await Expect(Page.GetByText("3 / 3 voted")).ToBeVisibleAsync();
+        await Expect(Page.Locator(".votes-badge.yes")).ToHaveCountAsync(3);
+
+        // Flip the first row to No.
+        await Page.Locator(".votes-row").First.GetByRole(AriaRole.Button, new() { Name = "No" }).ClickAsync();
+        await Expect(Page.Locator(".votes-badge.no")).ToHaveCountAsync(1);
+
+        // Remove the second row's vote.
+        await Page.Locator(".votes-row").Nth(1).GetByRole(AriaRole.Button, new() { Name = "✕" }).ClickAsync();
+        await Expect(Page.GetByText("2 / 3 voted")).ToBeVisibleAsync();
+        await Expect(Page.Locator(".votes-badge.unvoted")).ToHaveCountAsync(1);
+    }
+
+    [Test]
     public async Task Created_night_appears_in_home_list_with_host_badge()
     {
         await RegisterAndSignInAsync(NewUsername());

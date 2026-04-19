@@ -22,7 +22,9 @@ else if (_voterToken is null)
 }
 else if (_currentGame is null)
 {
-    @* Only reachable when the night has zero games on it. *@
+    @* Either no games on the night or every candidate has been voted on.
+       "All voted" → we redirect to /votes in OnInitializedAsync, so this
+       branch only ever shows for zero-games nights. *@
     <h1>@_night.Name</h1>
     <div class="notice">
         <p><strong>No games on this night yet.</strong></p>
@@ -33,18 +35,9 @@ else
 {
     <div class="swipe-wrap">
         <div class="swipe-progress">
-            @if (_unvoted > 0)
-            {
-                <span class="swipe-progress-label">
-                    <strong>@(_night.Games.Count - _unvoted)</strong> / @_night.Games.Count discovered
-                </span>
-            }
-            else
-            {
-                <span class="swipe-progress-label">
-                    <strong>@_swipeCount</strong> swipes · all explored
-                </span>
-            }
+            <span class="swipe-progress-label">
+                <strong>@_swipeCount</strong> / @_night.Games.Count voted
+            </span>
             <span class="swipe-progress-bar">
                 <span class="swipe-progress-fill" style="transform: scaleX(@_progressRatio)"></span>
             </span>
@@ -53,7 +46,7 @@ else
         <div class="swipe-stage">
             <article class="swipe-card" data-swipe-card>
                 <div class="swipe-card-corners"></div>
-                <div class="swipe-card-label">@_cardLabel</div>
+                <div class="swipe-card-label">candidate</div>
                 <h1 class="swipe-card-title">@_currentGame.Name</h1>
                 <span class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">Deploy</span>
                 <span class="swipe-stamp swipe-stamp-no" data-swipe-overlay-no aria-hidden="true">Pass</span>
@@ -75,6 +68,7 @@ else
         </form>
 
         <div class="swipe-footlinks">
+            <a href="/night/@ShareCode/votes">My votes</a>
             <a href="/night/@ShareCode/ranking">Peek at the ranking</a>
         </div>
     </div>
@@ -90,9 +84,7 @@ else
     private VoterProgress? _progress;
     private Game? _currentGame;
     private int _swipeCount;
-    private int _unvoted;
     private string _progressRatio = "0";
-    private string _cardLabel = "candidate";
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,33 +107,40 @@ else
             return;
         }
 
-        Guid? justSwipedGameId = null;
-        if (Form is { GameId: var gameId } && gameId != Guid.Empty)
-        {
-            // Form POST just arrived — upsert this swipe before picking the next game.
-            await Voting.RecordSwipeAsync(_voterToken, gameId, Form.Yes);
-            _progress = await Voting.GetProgressAsync(_voterToken);
-            justSwipedGameId = gameId;
-        }
+        _swipeCount = _progress.Swipes.Count;
+        _currentGame = await Voting.PickNextGameAsync(_voterToken);
 
-        _swipeCount = _progress!.Swipes.Count;
-        _unvoted = Math.Max(0, _night.Games.Count - _progress.Swipes.Count);
-        _currentGame = await Voting.PickNextGameAsync(_voterToken, justSwipedGameId);
-
-        if (_currentGame is not null)
+        // Every candidate already voted → bounce to the votes management page.
+        // (Handler also navigates there on the last swipe; this covers returning
+        // visitors who reach /swipe after the fact.)
+        if (_currentGame is null && _night.Games.Count > 0 && _swipeCount >= _night.Games.Count)
         {
-            var gameWasSwiped = _progress.Swipes.ContainsKey(_currentGame.Id);
-            _cardLabel = gameWasSwiped ? "re-roll" : "candidate";
+            Nav.NavigateTo($"/night/{ShareCode}/votes");
+            return;
         }
 
         if (_night.Games.Count > 0)
         {
-            var ratio = (double)(_night.Games.Count - _unvoted) / _night.Games.Count;
+            var ratio = (double)_swipeCount / _night.Games.Count;
             _progressRatio = ratio.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
         }
     }
 
-    private Task RecordAsync() => Task.CompletedTask; // all logic runs in OnInitializedAsync after the POST rerenders the page
+    private async Task RecordAsync()
+    {
+        // Keep mutations out of OnInitializedAsync — Blazor SSR's form-handler lookup
+        // happens during render, so removing the form (via state change in Init) would
+        // break the POST handshake. Instead: record here, then redirect.
+        if (_voterToken is null || _night is null || _night.IsClosed) return;
+        if (Form is null || Form.GameId == Guid.Empty) return;
+
+        await Voting.RecordSwipeAsync(_voterToken, Form.GameId, Form.Yes);
+
+        var next = await Voting.PickNextGameAsync(_voterToken, Form.GameId);
+        Nav.NavigateTo(next is null
+            ? $"/night/{ShareCode}/votes"
+            : $"/night/{ShareCode}/swipe");
+    }
 
     public sealed class SwipeFormModel
     {

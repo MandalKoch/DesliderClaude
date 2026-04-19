@@ -470,6 +470,66 @@ a:hover { color: var(--text); border-color: var(--cyan); }
     letter-spacing: 0.1em;
 }
 
+/* ---------- my-votes management ---------- */
+.votes-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-4) 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+}
+.votes-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+    background: rgba(10, 16, 42, 0.55);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+}
+.votes-row.is-yes { border-color: rgba(79, 209, 255, 0.3); background: rgba(79, 209, 255, 0.04); }
+.votes-row.is-no { border-color: rgba(239, 83, 80, 0.25); background: rgba(239, 83, 80, 0.04); }
+.votes-row.is-unvoted { border-style: dashed; }
+
+.votes-row-main {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    flex: 1;
+    min-width: 0;
+}
+.votes-row-name { font-size: 1.05rem; font-weight: 600; }
+.votes-row-status { margin-left: auto; }
+.votes-row-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.votes-row-actions form { display: inline; margin: 0; }
+
+.votes-badge {
+    font-family: var(--font-hud);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    padding: 3px 10px;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+}
+.votes-badge.yes { color: var(--cyan); border-color: rgba(79, 209, 255, 0.45); }
+.votes-badge.no { color: var(--crimson); border-color: rgba(239, 83, 80, 0.4); }
+.votes-badge.unvoted { color: var(--text-dim); }
+
+.btn.btn-sm, button.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+}
+
 main.page {
     max-width: 680px;
     margin: 0 auto;

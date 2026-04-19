@@ -61,6 +61,16 @@ internal sealed class VotingService : IVotingService
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task RemoveSwipeAsync(string voterToken, Guid gameId, CancellationToken ct = default)
+    {
+        var voter = await _db.Voters.FirstOrDefaultAsync(v => v.VoterToken == voterToken, ct)
+            ?? throw new InvalidOperationException("Voter not found.");
+        var swipe = await _db.Swipes.FirstOrDefaultAsync(s => s.VoterId == voter.Id && s.GameId == gameId, ct);
+        if (swipe is null) return;
+        _db.Swipes.Remove(swipe);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlyList<GameRanking>> GetRankingAsync(Guid gameNightId, CancellationToken ct = default)
     {
         // Project to an anonymous shape so EF can ORDER BY in SQL; record ctor
@@ -103,39 +113,21 @@ internal sealed class VotingService : IVotingService
             .FirstOrDefaultAsync(v => v.VoterToken == voterToken, ct);
         if (voter is null) return null;
 
-        var games = await _db.Games
-            .Where(g => g.GameNightId == voter.GameNightId)
+        var swipedGameIds = voter.Swipes.Select(s => s.GameId).ToHashSet();
+
+        // One vote per game: only unvoted games are picks. Changing/removing an
+        // existing vote happens from the dedicated /votes page.
+        var unvoted = await _db.Games
+            .Where(g => g.GameNightId == voter.GameNightId && !swipedGameIds.Contains(g.Id))
             .ToListAsync(ct);
-        if (games.Count == 0) return null;
+        if (unvoted.Count == 0) return null;
 
-        // Avoid immediately repeating the last-shown game when there's an alternative.
-        var pool = games.Count > 1 && excludeGameId is Guid excl
-            ? games.Where(g => g.Id != excl).ToList()
-            : games;
+        // Avoid immediately re-showing the one we just swiped (shouldn't happen now
+        // that swiped games are excluded, but keep the safety for concurrent edits).
+        var pool = unvoted.Count > 1 && excludeGameId is Guid excl
+            ? unvoted.Where(g => g.Id != excl).ToList()
+            : unvoted;
 
-        var now = DateTimeOffset.UtcNow;
-        var swipesByGame = voter.Swipes.ToDictionary(s => s.GameId);
-
-        // Weight function:
-        //   unvoted            → 1000 (strongly preferred)
-        //   voted t seconds ago → 1 + t / 60 (never zero, grows with age)
-        var weights = pool.Select(g =>
-        {
-            if (!swipesByGame.TryGetValue(g.Id, out var s)) return 1000.0;
-            var secondsSince = Math.Max(0, (now - s.SwipedAt).TotalSeconds);
-            return 1.0 + secondsSince / 60.0;
-        }).ToArray();
-
-        var total = weights.Sum();
-        if (total <= 0) return pool[Random.Shared.Next(pool.Count)];
-
-        var roll = Random.Shared.NextDouble() * total;
-        var acc = 0.0;
-        for (var i = 0; i < pool.Count; i++)
-        {
-            acc += weights[i];
-            if (roll < acc) return pool[i];
-        }
-        return pool[^1];
+        return pool[Random.Shared.Next(pool.Count)];
     }
 }
