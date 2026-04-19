@@ -3,6 +3,9 @@
 *.db-shm
 *.db-wal
 
+# ---- Playwright MCP smoke-test artifacts ----
+.playwright-mcp/
+
 # ---- .NET ----
 bin/
 obj/

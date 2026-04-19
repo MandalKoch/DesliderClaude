@@ -1,0 +1,175 @@
+@page "/night/{ShareCode}/host"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
+@inject IVotingService Voting
+@inject NavigationManager Nav
+
+<HeadContent>
+    @if (_isHost && _night is not null && !_night.IsClosed)
+    {
+        <meta http-equiv="refresh" content="10" />
+    }
+</HeadContent>
+
+<PageTitle>Host · @(_night?.Name ?? "Game Night")</PageTitle>
+
+@if (_night is null)
+{
+    <h1>Not found.</h1>
+    <p>That Game Night link doesn't match anything.</p>
+    <p><a href="/">← Back home</a></p>
+}
+else if (!_isHost)
+{
+    <h1>Not your night.</h1>
+    <p class="subtle">
+        You're not recognized as the host of <strong>@_night.Name</strong>.
+        If you created this night on another device or browser, you'll need to open the host
+        dashboard from there.
+    </p>
+    <div class="btn-row">
+        <a class="btn" href="/night/@ShareCode">Join as voter →</a>
+        <a class="btn btn-ghost" href="/night/@ShareCode/ranking">See standings →</a>
+    </div>
+}
+else
+{
+    <div class="ranking-head">
+        <div>
+            <span class="kicker kicker-gold">You're hosting</span>
+            <h1>@_night.Name</h1>
+            @if (_night.TargetDate is { } date)
+            {
+                <p class="subtle">Target date · @date.ToString("dddd, MMM d")</p>
+            }
+        </div>
+        @if (_night.IsClosed)
+        {
+            <span class="ranking-status">Closed · @(_night.ClosedAt?.ToString("MMM d, HH:mm"))</span>
+        }
+        else
+        {
+            <span class="ranking-status live">Open</span>
+        }
+    </div>
+
+    <div class="form-card">
+        <label for="share-url">Share link</label>
+        <input id="share-url" type="text" readonly value="@_shareUrl" onclick="this.select();" />
+        <div class="btn-row">
+            <button type="button" class="btn btn-cyan"
+                    onclick="navigator.clipboard.writeText('@_shareUrl');this.textContent='Copied ✓';setTimeout(()=>this.textContent='Copy link',1500);">
+                Copy link
+            </button>
+            <span class="subtle">Anyone with the link can swipe. No accounts.</span>
+        </div>
+    </div>
+
+    <div class="host-stats">
+        <div class="host-stat"><span class="host-stat-num">@_voterCount</span><span class="host-stat-label">voter@(_voterCount == 1 ? "" : "s")</span></div>
+        <div class="host-stat"><span class="host-stat-num">@_night.Games.Count</span><span class="host-stat-label">games</span></div>
+        <div class="host-stat"><span class="host-stat-num">@_totalSwipes</span><span class="host-stat-label">swipe@(_totalSwipes == 1 ? "" : "s")</span></div>
+    </div>
+
+    @if (_ranking.Count > 0)
+    {
+        <h2 class="kicker" style="margin-top: var(--s-6);">Live standings</h2>
+        <ol class="ranking-list">
+            @for (int i = 0; i < _ranking.Count; i++)
+            {
+                var row = _ranking[i];
+                <li class="@(i == 0 ? "winner" : null)">
+                    @if (i == 0)
+                    {
+                        <span class="winner-badge">@(_night.IsClosed ? "Final pick" : "Top pick")</span>
+                    }
+                    <span class="ranking-name">@row.Name</span>
+                    <span class="ranking-votes">
+                        <span class="yes">+@row.YesCount</span>
+                        <span class="no">−@row.NoCount</span>
+                    </span>
+                </li>
+            }
+        </ol>
+    }
+
+    <div class="btn-row" style="margin-top: var(--s-6);">
+        <a class="btn" href="/night/@ShareCode/ranking">Full ranking →</a>
+        <a class="btn btn-ghost" href="/night/@ShareCode/winner">Current pick →</a>
+    </div>
+
+    @if (!_night.IsClosed)
+    {
+        <hr />
+        <div class="form-card">
+            <h2 style="margin: 0 0 var(--s-3);">Close voting</h2>
+            <p class="subtle">
+                Locks the ranking and flips everyone's swipe screen to the winner. You can't undo this.
+            </p>
+            <form method="post" @formname="close-night" @onsubmit="CloseAsync">
+                <AntiforgeryToken />
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-primary">Close voting & lock the pick</button>
+                </div>
+            </form>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger">@_error</p>
+    }
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+
+    private GameNight? _night;
+    private bool _isHost;
+    private string _shareUrl = string.Empty;
+    private int _voterCount;
+    private int _totalSwipes;
+    private IReadOnlyList<GameRanking> _ranking = Array.Empty<GameRanking>();
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _night = await GameNights.GetByShareCodeAsync(ShareCode);
+        if (_night is null || HttpContext is null) return;
+
+        var cookieToken = HttpContext.Request.Cookies[HostCookie.Name(ShareCode)];
+        _isHost = !string.IsNullOrEmpty(cookieToken) && cookieToken == _night.HostToken;
+        if (!_isHost) return;
+
+        _shareUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/night/{ShareCode}";
+        _ranking = await Voting.GetRankingAsync(_night.Id);
+        _voterCount = await Voting.GetVoterCountAsync(_night.Id);
+        _totalSwipes = _ranking.Sum(r => r.YesCount + r.NoCount);
+    }
+
+    private async Task CloseAsync()
+    {
+        if (_night is null || HttpContext is null) return;
+
+        var cookieToken = HttpContext.Request.Cookies[HostCookie.Name(ShareCode)];
+        if (string.IsNullOrEmpty(cookieToken))
+        {
+            _error = "Host cookie missing — cannot close.";
+            return;
+        }
+
+        try
+        {
+            await GameNights.CloseAsync(_night.Id, cookieToken);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return;
+        }
+
+        Nav.NavigateTo($"/night/{ShareCode}/host");
+    }
+}

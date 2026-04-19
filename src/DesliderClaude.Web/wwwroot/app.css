@@ -399,7 +399,7 @@ label {
     font-weight: 600;
 }
 
-input[type="text"], input[type="search"], input:not([type]) {
+input[type="text"], input[type="search"], input[type="date"], input:not([type]), textarea {
     width: 100%;
     font-family: var(--font-body);
     font-size: 1.125rem;
@@ -413,11 +413,18 @@ input[type="text"], input[type="search"], input:not([type]) {
     transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
     letter-spacing: -0.005em;
 }
-input::placeholder { color: var(--text-dim); font-weight: 400; font-style: italic; }
-input:focus-visible {
+textarea {
+    resize: vertical;
+    min-height: 7rem;
+    line-height: 1.55;
+    font-size: 1rem;
+}
+input::placeholder, textarea::placeholder { color: var(--text-dim); font-weight: 400; font-style: italic; }
+input:focus-visible, textarea:focus-visible {
     border-color: var(--cyan);
     box-shadow: 0 0 0 3px rgba(79, 209, 255, 0.12), 0 0 20px -4px var(--cyan-glow);
 }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.6); cursor: pointer; }
 
 /* ---------- buttons — tactical, condensed uppercase ---------- */
 .btn, button:not(.unstyled) {
@@ -482,6 +489,25 @@ input:focus-visible {
     gap: var(--s-3);
     flex-wrap: wrap;
     margin-top: var(--s-5);
+}
+.btn-row-center { justify-content: center; }
+
+.home-or {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin: var(--s-5) 0 var(--s-4);
+    color: var(--text-muted);
+    font-family: var(--font-hud);
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    font-size: 0.7rem;
+}
+.home-or::before, .home-or::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
 }
 
 /* ---------- swipe deck ---------- */
@@ -734,6 +760,40 @@ input:focus-visible {
     font-weight: 600;
 }
 .swipe-footlinks a:hover { color: var(--cyan); }
+
+/* ---------- host dashboard stats ---------- */
+.host-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--s-3);
+    margin: var(--s-5) 0 var(--s-3);
+}
+.host-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--s-4);
+    background: rgba(10, 16, 42, 0.55);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+.host-stat-num {
+    font-family: var(--font-hud);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+.host-stat-label {
+    font-family: var(--font-hud);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
 
 /* ---------- ranking (tactical tile list) ---------- */
 .ranking-head {

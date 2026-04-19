@@ -8,4 +8,7 @@
     <Project Path="src/DesliderClaude.Web.Client/DesliderClaude.Web.Client.csproj" />
     <Project Path="src/DesliderClaude.Web/DesliderClaude.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DesliderClaude.Tests/DesliderClaude.Tests.csproj" />
+  </Folder>
 </Solution>

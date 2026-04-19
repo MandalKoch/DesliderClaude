@@ -63,12 +63,12 @@ TBD — decide later.
 ## Feature Plan
 
 ### MVP — async "Game Night"
-- [ ] Host creates a Game Night (name, optional date, candidate games), gets a share link
-- [ ] Anyone with the link lands on a join page, enters a display name
-- [ ] Swipe UI: voter swipes yes/no through the candidate list, can change swipes until close
-- [ ] Live ranking page: anyone with the link sees current ranking and vote counts, updating as swipes come in
-- [ ] Host dashboard: sees who has voted, can close voting
-- [ ] On close: ranking is locked/final
+- [x] Host creates a Game Night (name, optional date, candidate games), gets a share link
+- [x] Anyone with the link lands on a join page, enters a display name
+- [x] Swipe UI: voter swipes yes/no through the candidate list, can change swipes until close
+- [x] Live ranking page: anyone with the link sees current ranking and vote counts, updating as swipes come in
+- [x] Host dashboard: sees who has voted, can close voting
+- [x] On close: ranking is locked/final
 
 ### v1
 - [ ] Game library (reusable across Game Nights) with name, image, player count, play time
@@ -104,7 +104,7 @@ DesliderClaude.slnx
 │   ├── DesliderClaude.Data/               # EF Core DbContext, Fluent API configs, service impls
 │   └── DesliderClaude.Core/               # Domain entities, service interfaces, share-code generator
 └── tests/
-    └── DesliderClaude.Tests/              # (planned)
+    └── DesliderClaude.Tests/              # Playwright E2E (NUnit + Microsoft.Playwright.NUnit)
 ```
 
 **MigrationService / seed flow:** `AppHost` boots `MigrationService` first with the shared SQLite connection string; the service applies any pending EF migrations on startup, then stays up to serve `POST /seed`. `Web` has `.WaitFor(migrations)`, so it only starts once the DB schema is ready. In the Aspire dashboard, the `migrations` resource carries a **"Reset & seed sample data"** command — it POSTs to the service's `/seed` endpoint, which wipes every table and inserts a sample Game Night (`sample-night` share code) so you can exercise the UI without clicking through a fresh setup.
@@ -124,6 +124,10 @@ DesliderClaude.slnx
 
 ## Status
 
+**2026-04-19 (later II)** — Playwright E2E tests added. `tests/DesliderClaude.Tests/` is an NUnit project using `Microsoft.Playwright.NUnit` + `Microsoft.AspNetCore.Mvc.Testing`. `WebAppFixture` is a `WebApplicationFactory<Program>` that builds **two** hosts on `CreateHost` — a TestServer one for the factory's internals and a real Kestrel one bound to a random loopback port for Playwright to hit (canonical workaround for dotnet/aspnetcore#33846). Each fixture uses an ephemeral SQLite file under `%TEMP%/desliderclaude-test-*.db`. `HostFlowTests` covers the happy path (create → dashboard → close) and cookie-gating (fresh browser context hitting the host URL gets "Not your night"). `public partial class Program;` added to `Web/Program.cs` so the factory can reference it. First-time setup: `pwsh tests/DesliderClaude.Tests/bin/Debug/net10.0/playwright.ps1 install chromium`, then `dotnet test`.
+
+**2026-04-19 (later)** — Host flow live. `/create` lets anyone spin up a Game Night (name, optional date, candidate games via one-per-line textarea). On submit, `GameNightService.CreateAsync` mints a `HostToken`; the web layer drops it in a `deslider-host-{shareCode}` cookie (365-day, not HttpOnly, mirroring `VoterCookie`) and redirects to `/night/{shareCode}/host`. The host dashboard shows the share URL (copy button via `navigator.clipboard`), voters/games/swipes counters, the live ranking snapshot (10 s meta-refresh while open), and a **Close voting** form that POSTs to `CloseAsync` with the cookie token. No cookie / mismatched token → "Not your night" state. Added `IVotingService.GetVoterCountAsync`. Home page grew a "Host a new night →" button alongside the share-code join form. Deployed to Fly.io via the auto-deploy pipeline.
+
 **2026-04-19** — Fly.io deploy scaffolding. `Dockerfile` + `.dockerignore` + `fly.toml` at repo root target just `DesliderClaude.Web` (Aspire `AppHost` is dev-only and not deployed). `Web` now applies EF migrations on startup (`db.Database.MigrateAsync()` in `Program.cs`), so `MigrationService` is no longer required in prod — it stays for Aspire local dev and the `/seed` command. `fly.toml` mounts a volume at `/data`, points `ConnectionStrings__DesliderClaudeDb` at `/data/desliderclaude.db`, enables `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` for proxy-aware HTTPS, and pins to a single machine (SQLite + volume ⇒ no horizontal scale). First deploy: `fly launch --no-deploy --copy-config`, then `fly volume create desliderclaude_data --size 1 --region fra`, then `fly deploy`.
 
 **2026-04-18** — Scaffold pass 2 + migration service complete. `Core` / `Data` projects wired, four entities (`GameNight`, `Game`, `Voter`, `Swipe`) with `Guid.CreateVersion7()` PKs, first migration `InitialCreate` checked in. `MigrationService` applies migrations on startup and serves `POST /seed`; AppHost exposes a **"Reset & seed sample data"** command on the `migrations` resource in the Aspire dashboard. `Web` has `.WaitFor(migrations)`. Both services share a SQLite file under `%TEMP%/desliderclaude/`. Solution builds green.
@@ -132,4 +136,4 @@ DesliderClaude.slnx
 - Sample data: share code `sample-night`, three voters (Alice, Bob, Cara), six games, a mix of pre-swiped votes.
 - Voter flow live: `/night/{shareCode}` join (sets per-Night cookie), `/night/{shareCode}/swipe` **continuous** yes/no loop with weighted-random next-game selection, `/night/{shareCode}/ranking` meta-refresh live standings, `/night/{shareCode}/winner` celebratory top-pick view. All static SSR — swipe uses form POSTs + Blazor enhanced navigation so the transitions feel smooth without full reloads.
 - Swipe gesture: pointer-based drag (translate + rotate, velocity fling), HUD-stamp overlays, enter/exit animations re-inited on `Blazor.enhancedload`. Buttons remain as the primary/a11y path. `wwwroot/swipe.js` is the whole implementation.
-- Next step: host flow (create a Game Night page + host dashboard with close button); then PWA manifest + service worker; then SignalR to replace the 5-second meta-refresh on the ranking page.
+- Next step: PWA manifest + service worker (Add-to-Home-Screen); then SignalR to replace the 5-second meta-refresh on the ranking page and the 10-second refresh on the host dashboard.

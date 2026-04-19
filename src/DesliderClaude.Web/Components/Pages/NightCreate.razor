@@ -1,0 +1,98 @@
+@page "/create"
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
+@inject NavigationManager Nav
+
+<PageTitle>Create Game Night — DesliderClaude</PageTitle>
+
+<section class="hero">
+    <span class="kicker">New game night</span>
+    <h1 class="hero-title">Set the table.</h1>
+    <p class="hero-lede">
+        Name the night, drop in the candidate games, share the link. Friends swipe on their own time —
+        the ranking updates live until you close voting.
+    </p>
+</section>
+
+<div class="form-card">
+    <form method="post" @formname="create-night" @onsubmit="CreateAsync">
+        <AntiforgeryToken />
+
+        <label for="night-name">Night name</label>
+        <input id="night-name" name="Form.Name" value="@Form?.Name" maxlength="200"
+               placeholder="Friday boardgames" autocomplete="off" required autofocus />
+
+        <label for="target-date">Target date <span class="subtle">(optional)</span></label>
+        <input id="target-date" name="Form.TargetDate" value="@Form?.TargetDate" type="date" />
+
+        <label for="games">Candidate games <span class="subtle">(one per line — at least two)</span></label>
+        <textarea id="games" name="Form.Games" rows="8"
+                  placeholder="@GamesPlaceholder"
+                  required>@Form?.Games</textarea>
+
+        <div class="btn-row">
+            <a class="btn btn-ghost" href="/">← Cancel</a>
+            <button type="submit" class="btn btn-primary">Create night →</button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger">@_error</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [SupplyParameterFromForm] public CreateFormModel? Form { get; set; }
+
+    private string? _error;
+
+    private const string GamesPlaceholder = "Catan\nAzul\nWingspan\nTerraforming Mars";
+
+    private async Task CreateAsync()
+    {
+        if (HttpContext is null) return;
+
+        var name = Form?.Name?.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            _error = "Give the night a name.";
+            return;
+        }
+
+        var games = (Form?.Games ?? string.Empty)
+            .Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (games.Count < 2)
+        {
+            _error = "Add at least two candidate games — otherwise there's nothing to swipe.";
+            return;
+        }
+
+        DateOnly? targetDate = null;
+        if (!string.IsNullOrWhiteSpace(Form?.TargetDate)
+            && DateOnly.TryParse(Form.TargetDate, out var parsed))
+        {
+            targetDate = parsed;
+        }
+
+        var night = await GameNights.CreateAsync(name, targetDate, games);
+
+        HttpContext.Response.Cookies.Append(
+            HostCookie.Name(night.ShareCode),
+            night.HostToken,
+            HostCookie.Options);
+
+        Nav.NavigateTo($"/night/{night.ShareCode}/host");
+    }
+
+    public sealed class CreateFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string TargetDate { get; set; } = string.Empty;
+        public string Games { get; set; } = string.Empty;
+    }
+}

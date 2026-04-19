@@ -72,6 +72,9 @@ internal sealed class VotingService : IVotingService
         return rows.Select(r => new GameRanking(r.Id, r.Name, r.YesCount, r.NoCount)).ToList();
     }
 
+    public Task<int> GetVoterCountAsync(Guid gameNightId, CancellationToken ct = default)
+        => _db.Voters.CountAsync(v => v.GameNightId == gameNightId, ct);
+
     public async Task<VoterProgress?> GetProgressAsync(string voterToken, CancellationToken ct = default)
     {
         var voter = await _db.Voters
