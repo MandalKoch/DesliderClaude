@@ -21,7 +21,6 @@ internal static class SeedData
             Name = "Friday Sample Night",
             TargetDate = DateOnly.FromDateTime(DateTime.Today.AddDays(2)),
             ShareCode = SampleShareCode,
-            HostToken = "sample-host-token",
         };
 
         var catan = new Game { Name = "Catan" };

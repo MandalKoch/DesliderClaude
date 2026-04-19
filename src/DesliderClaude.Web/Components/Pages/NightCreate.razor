@@ -99,12 +99,6 @@
         }
 
         var night = await GameNights.CreateAsync(name, targetDate, games, userId);
-
-        HttpContext.Response.Cookies.Append(
-            HostCookie.Name(night.ShareCode),
-            night.HostToken,
-            HostCookie.Options);
-
         Nav.NavigateTo($"/night/{night.ShareCode}/host");
     }
 

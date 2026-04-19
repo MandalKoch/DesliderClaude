@@ -11,7 +11,6 @@ internal sealed class GameNightConfiguration : IEntityTypeConfiguration<GameNigh
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.ShareCode).HasMaxLength(64).IsRequired();
-        builder.Property(x => x.HostToken).HasMaxLength(128).IsRequired();
         builder.HasIndex(x => x.ShareCode).IsUnique();
 
         builder.HasMany(x => x.Games)

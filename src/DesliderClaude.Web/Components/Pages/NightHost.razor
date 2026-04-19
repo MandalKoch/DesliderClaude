@@ -24,9 +24,8 @@ else if (!_isHost)
 {
     <h1>Not your night.</h1>
     <p class="subtle">
-        You're not recognized as the host of <strong>@_night.Name</strong>.
-        If you created this night on another device or browser, you'll need to open the host
-        dashboard from there.
+        You're signed in as a different user than the one who created <strong>@_night.Name</strong>.
+        Sign in with the host's account to manage this night.
     </p>
     <div class="btn-row">
         <a class="btn" href="/night/@ShareCode">Voter →</a>
@@ -124,10 +123,12 @@ else
 
 @code {
     [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [CascadingParameter] public Task<AuthenticationState>? AuthState { get; set; }
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
 
     private GameNight? _night;
     private bool _isHost;
+    private Guid? _currentUserId;
     private string _shareUrl = string.Empty;
     private int _voterCount;
     private int _totalSwipes;
@@ -137,13 +138,22 @@ else
     protected override async Task OnInitializedAsync()
     {
         _night = await GameNights.GetByShareCodeAsync(ShareCode);
-        if (_night is null || HttpContext is null) return;
+        if (_night is null) return;
 
-        var cookieToken = HttpContext.Request.Cookies[HostCookie.Name(ShareCode)];
-        _isHost = !string.IsNullOrEmpty(cookieToken) && cookieToken == _night.HostToken;
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            _currentUserId = state.User.GetUserId();
+        }
+
+        _isHost = _currentUserId is { } uid
+            && _night.CreatedByUserId is { } hostId
+            && hostId == uid;
         if (!_isHost) return;
 
-        _shareUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/night/{ShareCode}";
+        _shareUrl = HttpContext is null
+            ? $"/night/{ShareCode}"
+            : $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/night/{ShareCode}";
         _ranking = await Voting.GetRankingAsync(_night.Id);
         _voterCount = await Voting.GetVoterCountAsync(_night.Id);
         _totalSwipes = _ranking.Sum(r => r.YesCount + r.NoCount);
@@ -151,18 +161,11 @@ else
 
     private async Task CloseAsync()
     {
-        if (_night is null || HttpContext is null) return;
-
-        var cookieToken = HttpContext.Request.Cookies[HostCookie.Name(ShareCode)];
-        if (string.IsNullOrEmpty(cookieToken))
-        {
-            _error = "Host cookie missing — cannot close.";
-            return;
-        }
+        if (_night is null || _currentUserId is not { } uid) return;
 
         try
         {
-            await GameNights.CloseAsync(_night.Id, cookieToken);
+            await GameNights.CloseAsync(_night.Id, uid);
         }
         catch (Exception ex)
         {

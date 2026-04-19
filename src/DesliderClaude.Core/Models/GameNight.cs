@@ -6,10 +6,9 @@ public class GameNight
     public string Name { get; set; } = string.Empty;
     public DateOnly? TargetDate { get; set; }
     public string ShareCode { get; set; } = string.Empty;
-    public string HostToken { get; set; } = string.Empty;
 
-    /// <summary>Set when the night is created by a signed-in user. Nullable to
-    /// keep the anonymous/legacy create path working.</summary>
+    /// <summary>The account that created this night. /create is [Authorize]-gated
+    /// so new rows always have this set; legacy rows may be null.</summary>
     public Guid? CreatedByUserId { get; set; }
     public User? CreatedByUser { get; set; }
 

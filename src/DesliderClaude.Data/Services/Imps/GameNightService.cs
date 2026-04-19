@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using DesliderClaude.Core.Models;
 using DesliderClaude.Core.Services;
 using Microsoft.EntityFrameworkCore;
@@ -30,14 +29,12 @@ internal sealed partial class GameNightService : IGameNightService
         CancellationToken ct = default)
     {
         var shareCode = await GenerateUniqueShareCodeAsync(ct);
-        var hostToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 
         var night = new GameNight
         {
             Name = name,
             TargetDate = targetDate,
             ShareCode = shareCode,
-            HostToken = hostToken,
             CreatedByUserId = createdByUserId,
             Games = gameNames.Select(n => new Game { Name = n }).ToList()
         };
@@ -85,12 +82,12 @@ internal sealed partial class GameNightService : IGameNightService
             .Include(n => n.Games)
             .FirstOrDefaultAsync(n => n.ShareCode == shareCode, ct);
 
-    public async Task CloseAsync(Guid gameNightId, string hostToken, CancellationToken ct = default)
+    public async Task CloseAsync(Guid gameNightId, Guid requestingUserId, CancellationToken ct = default)
     {
         var night = await _db.GameNights.FirstOrDefaultAsync(n => n.Id == gameNightId, ct)
             ?? throw new InvalidOperationException("Game Night not found.");
-        if (night.HostToken != hostToken)
-            throw new UnauthorizedAccessException("Host token does not match.");
+        if (night.CreatedByUserId != requestingUserId)
+            throw new UnauthorizedAccessException("Only the night's creator can close it.");
         if (night.IsClosed) return;
 
         night.IsClosed = true;
