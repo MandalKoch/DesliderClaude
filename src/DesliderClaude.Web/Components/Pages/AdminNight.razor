@@ -73,7 +73,7 @@ else
                         <td class="right"><span class="yes">+@v.YesCount</span></td>
                         <td class="right"><span class="no">−@v.NoCount</span></td>
                         <td>
-                            <form method="post" @formname="@($"del-voter-{v.Id}")" @onsubmit="() => DeleteVoterAsync(v.Id)">
+                            <form method="post" @formname="@($"del-voter-{v.Id}")" @onsubmit="() => DeleteVoterAsync(v.Id)" data-enhance>
                                 <AntiforgeryToken />
                                 <button type="submit" class="btn btn-ghost btn-sm"
                                         onclick="return confirm('Remove voter “@v.DisplayName”? Their swipes are deleted. This can\'t be undone.');">✕</button>

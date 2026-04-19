@@ -104,13 +104,13 @@ else
                         <td>
                             @if (!n.IsClosed)
                             {
-                                <form method="post" @formname="@($"close-night-{n.Id}")" @onsubmit="() => CloseNightAsync(n.Id)">
+                                <form method="post" @formname="@($"close-night-{n.Id}")" @onsubmit="() => CloseNightAsync(n.Id)" data-enhance>
                                     <AntiforgeryToken />
                                     <button type="submit" class="btn btn-ghost btn-sm" title="Close voting"
                                             onclick="return confirm('Close voting on “@n.Name”? Locks the ranking and flips every voter to the winner.');">Close</button>
                                 </form>
                             }
-                            <form method="post" @formname="@($"del-night-{n.Id}")" @onsubmit="() => DeleteNightAsync(n.Id)">
+                            <form method="post" @formname="@($"del-night-{n.Id}")" @onsubmit="() => DeleteNightAsync(n.Id)" data-enhance>
                                 <AntiforgeryToken />
                                 <button type="submit" class="btn btn-ghost btn-sm" title="Delete night"
                                         onclick="return confirm('Delete “@n.Name”? This removes all its games, voters, and swipes.');">✕</button>
@@ -171,7 +171,7 @@ else
                             }
                             else
                             {
-                                <form method="post" @formname="@($"del-user-{u.Id}")" @onsubmit="() => DeleteUserAsync(u.Id)">
+                                <form method="post" @formname="@($"del-user-{u.Id}")" @onsubmit="() => DeleteUserAsync(u.Id)" data-enhance>
                                     <AntiforgeryToken />
                                     <button type="submit" class="btn btn-ghost btn-sm"
                                             onclick="return confirm('Delete user “@u.Username”? Their hosted nights stay but lose the owner link.');">✕</button>
