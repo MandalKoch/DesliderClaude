@@ -17,6 +17,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IVotingService, VotingService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IVisitorService, VisitorService>();
+        services.AddScoped<IAdminService, AdminService>();
         services.AddHealthChecks()
             .AddDbContextCheck<DesliderClaudeDbContext>("sqlite");
         return services;

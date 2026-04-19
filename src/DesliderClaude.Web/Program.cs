@@ -1,3 +1,4 @@
+using DesliderClaude.Core.Options;
 using DesliderClaude.Data;
 using DesliderClaude.Web.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -10,6 +11,8 @@ builder.AddServiceDefaults();
 builder.Services.AddDesliderData(
     builder.Configuration.GetConnectionString("DesliderClaudeDb")
     ?? throw new InvalidOperationException("Missing connection string 'DesliderClaudeDb'."));
+
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.Section));
 
 builder.Services.AddHttpContextAccessor();
 

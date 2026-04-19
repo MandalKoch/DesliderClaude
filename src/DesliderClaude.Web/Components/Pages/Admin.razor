@@ -1,0 +1,219 @@
+@page "/admin"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject IAdminService AdminSvc
+@inject NavigationManager Nav
+
+<PageTitle>Admin — DesliderClaude</PageTitle>
+
+<section class="hero">
+    <span class="kicker kicker-gold">Admin</span>
+    <h1 class="hero-title">Control deck.</h1>
+</section>
+
+@if (_overview is null)
+{
+    <p class="subtle">Loading…</p>
+}
+else
+{
+    <div class="admin-stats">
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.UserCount</span><span class="admin-stat-label">Users</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.VisitorCount</span><span class="admin-stat-label">Visitors</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.NightCount</span><span class="admin-stat-label">Nights</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.OpenNightCount</span><span class="admin-stat-label">Open</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.ClosedNightCount</span><span class="admin-stat-label">Closed</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.VoterCount</span><span class="admin-stat-label">Voters</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.SwipeCount</span><span class="admin-stat-label">Swipes</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.SwipesLast24h</span><span class="admin-stat-label">Swipes / 24h</span></div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger">@_error</p>
+    }
+
+    <h2 class="kicker" style="margin-top: var(--s-6);">Top games</h2>
+    @if (_topGames.Count == 0)
+    {
+        <p class="subtle">No swipes cast yet.</p>
+    }
+    else
+    {
+        <ol class="ranking-list">
+            @foreach (var g in _topGames)
+            {
+                <li>
+                    <span class="ranking-name">@g.Name</span>
+                    <span class="ranking-votes">
+                        <span class="yes">+@g.YesCount</span>
+                        <span class="no">−@g.NoCount</span>
+                    </span>
+                </li>
+            }
+        </ol>
+    }
+
+    <h2 class="kicker" style="margin-top: var(--s-6);">Game Nights</h2>
+    @if (_nights.Count == 0)
+    {
+        <p class="subtle">No nights yet.</p>
+    }
+    else
+    {
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Host</th>
+                    <th class="right">Games</th>
+                    <th class="right">Voters</th>
+                    <th class="right">Swipes</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var n in _nights)
+                {
+                    <tr>
+                        <td>
+                            <a href="/night/@n.ShareCode/host" class="admin-row-link">@n.Name</a>
+                            <div class="subtle admin-row-sub">@n.ShareCode</div>
+                        </td>
+                        <td>@(n.HostUsername ?? "—")</td>
+                        <td class="right">@n.GameCount</td>
+                        <td class="right">@n.VoterCount</td>
+                        <td class="right">@n.SwipeCount</td>
+                        <td>
+                            @if (n.IsClosed)
+                            {
+                                <span class="nights-badge closed">Closed</span>
+                            }
+                            else
+                            {
+                                <span class="nights-badge warn">Open</span>
+                            }
+                        </td>
+                        <td>@n.CreatedAt.ToString("MMM d, HH:mm")</td>
+                        <td>
+                            <form method="post" @formname="@($"del-night-{n.Id}")" @onsubmit="() => DeleteNightAsync(n.Id)">
+                                <AntiforgeryToken />
+                                <button type="submit" class="btn btn-ghost btn-sm"
+                                        onclick="return confirm('Delete “@n.Name”? This removes all its games, voters, and swipes.');">✕</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 class="kicker" style="margin-top: var(--s-6);">Users</h2>
+    @if (_users.Count == 0)
+    {
+        <p class="subtle">No registered users yet.</p>
+    }
+    else
+    {
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th class="right">Hosted</th>
+                    <th class="right">Voted in</th>
+                    <th class="right">Swipes</th>
+                    <th>Registered</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in _users)
+                {
+                    <tr>
+                        <td>@u.Username</td>
+                        <td class="right">@u.NightsHosted</td>
+                        <td class="right">@u.NightsVotedIn</td>
+                        <td class="right">@u.SwipeCount</td>
+                        <td>@u.CreatedAt.ToString("MMM d, HH:mm")</td>
+                        <td>
+                            @if (u.Id == _currentUserId)
+                            {
+                                <span class="subtle">you</span>
+                            }
+                            else
+                            {
+                                <form method="post" @formname="@($"del-user-{u.Id}")" @onsubmit="() => DeleteUserAsync(u.Id)">
+                                    <AntiforgeryToken />
+                                    <button type="submit" class="btn btn-ghost btn-sm"
+                                            onclick="return confirm('Delete user “@u.Username”? Their hosted nights stay but lose the owner link.');">✕</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
+
+    private AdminOverview? _overview;
+    private IReadOnlyList<AdminUserRow> _users = Array.Empty<AdminUserRow>();
+    private IReadOnlyList<AdminNightRow> _nights = Array.Empty<AdminNightRow>();
+    private IReadOnlyList<GamePopularityRow> _topGames = Array.Empty<GamePopularityRow>();
+    private Guid? _currentUserId;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            _currentUserId = state.User.GetUserId();
+        }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _overview = await AdminSvc.GetOverviewAsync();
+        _users = await AdminSvc.ListUsersAsync();
+        _nights = await AdminSvc.ListNightsAsync();
+        _topGames = await AdminSvc.TopGamesAsync();
+    }
+
+    private async Task DeleteNightAsync(Guid nightId)
+    {
+        _error = null;
+        try
+        {
+            await AdminSvc.DeleteNightAsync(nightId);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        Nav.NavigateTo("/admin");
+    }
+
+    private async Task DeleteUserAsync(Guid userId)
+    {
+        _error = null;
+        if (userId == _currentUserId) { _error = "You can't delete yourself."; return; }
+        try
+        {
+            await AdminSvc.DeleteUserAsync(userId);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        Nav.NavigateTo("/admin");
+    }
+}
