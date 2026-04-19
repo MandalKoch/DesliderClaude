@@ -21,8 +21,7 @@ A host creates a **Game Night**, shares a link, and friends swipe on the candida
 
 - `/night/{shareCode}` — join (display name → cookie)
 - `/night/{shareCode}/swipe` — continuous swipe loop; redirects to `/winner` when the night is closed
-- `/night/{shareCode}/ranking` — full live standings (meta-refresh every 5 s while open)
-- `/night/{shareCode}/winner` — celebratory top-pick hero + runners-up. Shown as the "current pick" while open and the locked-in verdict once the host closes the night
+- `/night/{shareCode}/winner` — celebratory top-pick hero + runners-up (includes the full live standings). Meta-refresh every 5 s while open. Shown as the "current pick" while open and the locked-in verdict once the host closes the night
 
 ## Game Night Model
 
@@ -137,6 +136,8 @@ DesliderClaude.slnx
 - **Anonymous Visitor identity** (cross-night). First anonymous join creates a `Visitor` row with a chosen display name, pinned via a long-lived `deslider-visitor` cookie. Subsequent nights auto-join with the remembered name — same persona, same vote history. `Voter.VisitorId` ties per-night swipes to the visitor. Signed-in users skip the visitor path entirely.
 - `/night/{shareCode}` no longer shows a join prompt when it doesn't have to: 1) existing voter cookie for this night → straight to `/swipe`; 2) signed-in → auto-join with username; 3) known visitor → auto-join with remembered name; 4) otherwise → the callsign form.
 - **Swipe loop is now one vote per game.** `PickNextGameAsync` only returns unvoted games; after the last swipe, `/swipe` redirects to `/night/{shareCode}/votes` — a new management page that lists every game with the viewer's current vote (Yes / No / Not voted) and lets them flip or remove votes via form POSTs. `IVotingService.RemoveSwipeAsync` is the new deletion path.
+- **Winner = ranking.** `/night/{shareCode}/ranking` was removed; the winner page carries the hero + runners-up and is now the single standings surface (5 s meta-refresh while open).
+- **Host-vs-voter navigation from the home list.** Hosts land on `/host`; from there a **Vote as host** button jumps to `/night/{code}` → auto-join → `/swipe`. Voters always auto-join straight to swiping.
 - Home page → share-code join form is always visible. **Signed-in** users see "Host a new night →" plus a **Your nights** list (filter by status / role, sort by smart / date / recent). Default "smart" order: open nights first, ones where you still need to vote bubble up, nearest `TargetDate` first, closed nights at the bottom. Unauth users see "Sign in to host →" / "Create account". `/create` has `[Authorize]` (redirects to `/signin?returnUrl=/create`).
 - `/create` mints a `GameNight` + `HostToken`, drops a `deslider-host-{shareCode}` cookie, redirects to `/night/{shareCode}/host`.
 - Host dashboard — share URL with copy button, live counters (voters / games / swipes), compact ranking snapshot (10 s meta-refresh while open), **Close voting** button. Cookie-gated: no cookie / mismatch → "Not your night" screen.
@@ -162,6 +163,8 @@ DesliderClaude.slnx
 - Host has no way to recover a lost cookie today. Phase 2 solves this once the night is tied to a user account.
 
 ### History
+
+**2026-04-19 (later VII)** — Navigation simplification. Deleted `NightRanking.razor` and the `/night/{shareCode}/ranking` route — the winner page already renders the full ranking as "Runners-up", so the separate standings surface was redundant. Every `/ranking` link rewritten (to `/winner` or `/votes` as appropriate). The winner page inherited the 5-second meta-refresh so it stays live while voting is open. Added a **Vote as host** button on the host dashboard that links to `/night/{code}` — the signed-in host auto-joins there and drops on `/swipe` (or `/votes` if they've already swiped everything).
 
 **2026-04-19 (later VI)** — Voting model overhaul: one vote per game + dedicated management page. `PickNextGameAsync` now only returns unvoted games; the old weighted-random re-roll loop is gone (revisiting = explicit action). When the voter swipes their last candidate, the form-POST handler calls `NavigateTo("/votes")` so they land on the new **`/night/{shareCode}/votes`** page: a per-game list with current-vote badge (Yes / No / Not voted) and buttons to flip or remove the vote (`IVotingService.RemoveSwipeAsync` is the new hard-delete). Important fix inside `NightSwipe`: recording moved from `OnInitializedAsync` into the `RecordAsync` form handler — if the form vanishes mid-render (because the next-pick turns null on the last swipe), Blazor SSR's `@formname="swipe"` lookup errors with *"Cannot submit the form 'swipe'"*; deferring the mutation until after the render tree is built avoids that. New E2E test walks the full path.
 
