@@ -1253,6 +1253,10 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
     box-shadow: 0 0 40px -10px var(--gold-glow);
     padding: var(--s-5);
     position: relative;
+    /* The parent li clip-path shears off anything above the card — disable it
+       on the winner so the Top-pick badge can protrude. */
+    clip-path: none;
+    overflow: visible;
 }
 .ranking-list li.winner::before {
     color: var(--gold);
@@ -1260,11 +1264,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
 }
 .ranking-list li.winner .ranking-name { font-size: 1.25rem; }
 .ranking-list li.winner .winner-badge {
-    /* Parent li uses clip-path for the corner cut, which also clips any
-       child that tries to escape the card — so the badge lives inside. */
     position: absolute;
-    top: 10px;
-    right: var(--s-5);
+    top: -11px;
+    right: calc(var(--s-5) + 10px);
     font-family: var(--font-hud);
     font-size: 0.6875rem;
     font-weight: 700;
