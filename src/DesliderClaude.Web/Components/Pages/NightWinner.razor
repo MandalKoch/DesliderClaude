@@ -4,14 +4,6 @@
 @inject IGameNightService GameNights
 @inject IVotingService Voting
 
-<HeadContent>
-    @* Crude live ranking: full-page refresh every 5 s while open. Replaced by SignalR in v1. *@
-    @if (_night is not null && !_night.IsClosed)
-    {
-        <meta http-equiv="refresh" content="5" />
-    }
-</HeadContent>
-
 <PageTitle>Tonight's pick — @(_night?.Name ?? "Game Night")</PageTitle>
 
 @if (_night is null)

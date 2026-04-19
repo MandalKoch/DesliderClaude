@@ -5,13 +5,6 @@
 @inject IVotingService Voting
 @inject NavigationManager Nav
 
-<HeadContent>
-    @if (_isHost && _night is not null && !_night.IsClosed)
-    {
-        <meta http-equiv="refresh" content="10" />
-    }
-</HeadContent>
-
 <PageTitle>Host · @(_night?.Name ?? "Game Night")</PageTitle>
 
 @if (_night is null)
