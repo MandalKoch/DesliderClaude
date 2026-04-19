@@ -14,6 +14,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IShareCodeGenerator, HaikunatorShareCodeGenerator>();
         services.AddScoped<IGameNightService, GameNightService>();
         services.AddScoped<IVotingService, VotingService>();
+        services.AddHealthChecks()
+            .AddDbContextCheck<DesliderClaudeDbContext>("sqlite");
         return services;
     }
 }

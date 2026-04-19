@@ -1,0 +1,40 @@
+# Fly.io config for DesliderClaude.
+# Rename `app` before first deploy (must be globally unique on Fly).
+# First-time setup:
+#   fly launch --no-deploy --copy-config   # picks up this file, skips a new one
+#   fly volume create desliderclaude_data --size 1 --region fra
+#   fly deploy
+app = "desliderclaude"
+primary_region = "fra"
+
+[build]
+
+[env]
+  ASPNETCORE_URLS = "http://+:8080"
+  ASPNETCORE_FORWARDEDHEADERS_ENABLED = "true"
+  ConnectionStrings__DesliderClaudeDb = "Data Source=/data/desliderclaude.db;Cache=Shared"
+
+[[mounts]]
+  source = "desliderclaude_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # SQLite + volume = single machine only. Do not raise this.
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

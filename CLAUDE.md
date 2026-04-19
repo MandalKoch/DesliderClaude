@@ -10,10 +10,19 @@ A host creates a **Game Night**, shares a link, and friends swipe on the candida
 
 ## Core Voting Mode
 
-**MVP = Swipe ("Tinder" style), async.**
-- Each person swipes yes/no on each candidate game, at their own pace.
-- Ranking = games sorted by yes-count. Top of the ranking is the pick; the rest is fallback / discussion material.
+**MVP = Swipe ("Tinder" style), async, continuous.**
+- Each person swipes yes/no on games at their own pace. **Voting never "ends"** from the voter's side — the swipe page always has another card — until the host closes the night.
+- **Next-game selection is weighted random**, per voter. Games the voter has never swiped get a very high fixed weight (strongly preferred); games the voter has swiped stay in the pool with a weight that grows with time since their last swipe. Weight is never zero — even a recently-swiped game can reappear. The game just swiped is skipped as the immediate next pick when another game is available.
+- **A swipe for a game the voter has already swiped overrides the previous value** (upsert on `(VoterId, GameId)`). Only the latest swipe per voter per game counts in the ranking. This is the intended workflow: revisiting a game is how you change your mind.
+- Ranking = games sorted by yes-count of the latest swipe per voter. Top of the ranking is the pick; the rest is fallback / discussion material.
 - **Later:** Tournament bracket mode as a second option for bigger libraries / more dramatic picks.
+
+### Voter routes
+
+- `/night/{shareCode}` — join (display name → cookie)
+- `/night/{shareCode}/swipe` — continuous swipe loop; redirects to `/winner` when the night is closed
+- `/night/{shareCode}/ranking` — full live standings (meta-refresh every 5 s while open)
+- `/night/{shareCode}/winner` — celebratory top-pick hero + runners-up. Shown as the "current pick" while open and the locked-in verdict once the host closes the night
 
 ## Game Night Model
 
@@ -115,9 +124,12 @@ DesliderClaude.slnx
 
 ## Status
 
+**2026-04-19** — Fly.io deploy scaffolding. `Dockerfile` + `.dockerignore` + `fly.toml` at repo root target just `DesliderClaude.Web` (Aspire `AppHost` is dev-only and not deployed). `Web` now applies EF migrations on startup (`db.Database.MigrateAsync()` in `Program.cs`), so `MigrationService` is no longer required in prod — it stays for Aspire local dev and the `/seed` command. `fly.toml` mounts a volume at `/data`, points `ConnectionStrings__DesliderClaudeDb` at `/data/desliderclaude.db`, enables `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` for proxy-aware HTTPS, and pins to a single machine (SQLite + volume ⇒ no horizontal scale). First deploy: `fly launch --no-deploy --copy-config`, then `fly volume create desliderclaude_data --size 1 --region fra`, then `fly deploy`.
+
 **2026-04-18** — Scaffold pass 2 + migration service complete. `Core` / `Data` projects wired, four entities (`GameNight`, `Game`, `Voter`, `Swipe`) with `Guid.CreateVersion7()` PKs, first migration `InitialCreate` checked in. `MigrationService` applies migrations on startup and serves `POST /seed`; AppHost exposes a **"Reset & seed sample data"** command on the `migrations` resource in the Aspire dashboard. `Web` has `.WaitFor(migrations)`. Both services share a SQLite file under `%TEMP%/desliderclaude/`. Solution builds green.
 - Decided: async swipe voting, Game Night model with link-invite, Blazor Web App (unified) + PWA, .NET Aspire, SQLite. Hosting TBD.
 - Share codes: Haikunator-generated `adjective-noun-NNNN` (e.g. `autumn-frog-1234`) on `GameNight.ShareCode`, unique indexed.
 - Sample data: share code `sample-night`, three voters (Alice, Bob, Cara), six games, a mix of pre-swiped votes.
-- Voter flow live: `/night/{shareCode}` join (sets per-Night cookie), `/night/{shareCode}/swipe` iterates through games with yes/no, `/night/{shareCode}/ranking` shows a meta-refresh live ranking. All three pages are static SSR (no SignalR circuit yet) — swipe uses form POSTs + Blazor enhanced navigation so the transitions feel smooth without full reloads.
+- Voter flow live: `/night/{shareCode}` join (sets per-Night cookie), `/night/{shareCode}/swipe` **continuous** yes/no loop with weighted-random next-game selection, `/night/{shareCode}/ranking` meta-refresh live standings, `/night/{shareCode}/winner` celebratory top-pick view. All static SSR — swipe uses form POSTs + Blazor enhanced navigation so the transitions feel smooth without full reloads.
+- Swipe gesture: pointer-based drag (translate + rotate, velocity fling), HUD-stamp overlays, enter/exit animations re-inited on `Blazor.enhancedload`. Buttons remain as the primary/a11y path. `wwwroot/swipe.js` is the whole implementation.
 - Next step: host flow (create a Game Night page + host dashboard with close button); then PWA manifest + service worker; then SignalR to replace the 5-second meta-refresh on the ranking page.
