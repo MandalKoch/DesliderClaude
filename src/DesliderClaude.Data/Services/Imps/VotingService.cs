@@ -10,7 +10,13 @@ internal sealed class VotingService : IVotingService
 
     public VotingService(DesliderClaudeDbContext db) => _db = db;
 
-    public async Task<Voter> JoinAsync(Guid gameNightId, string displayName, string voterToken, Guid? userId = null, CancellationToken ct = default)
+    public async Task<Voter> JoinAsync(
+        Guid gameNightId,
+        string displayName,
+        string voterToken,
+        Guid? userId = null,
+        Guid? visitorId = null,
+        CancellationToken ct = default)
     {
         var existing = await _db.Voters.FirstOrDefaultAsync(v => v.VoterToken == voterToken, ct);
         if (existing is not null)
@@ -19,6 +25,7 @@ internal sealed class VotingService : IVotingService
                 throw new InvalidOperationException("Voter token already registered to a different Game Night.");
             existing.DisplayName = displayName;
             if (userId is not null) existing.UserId = userId;
+            if (visitorId is not null) existing.VisitorId = visitorId;
             await _db.SaveChangesAsync(ct);
             return existing;
         }
@@ -29,6 +36,7 @@ internal sealed class VotingService : IVotingService
             DisplayName = displayName,
             VoterToken = voterToken,
             UserId = userId,
+            VisitorId = visitorId,
         };
         _db.Voters.Add(voter);
         await _db.SaveChangesAsync(ct);

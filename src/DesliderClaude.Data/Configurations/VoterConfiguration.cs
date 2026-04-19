@@ -23,5 +23,11 @@ internal sealed class VoterConfiguration : IEntityTypeConfiguration<Voter>
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(x => new { x.GameNightId, x.UserId });
+
+        builder.HasOne(x => x.Visitor)
+            .WithMany()
+            .HasForeignKey(x => x.VisitorId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => new { x.GameNightId, x.VisitorId });
     }
 }

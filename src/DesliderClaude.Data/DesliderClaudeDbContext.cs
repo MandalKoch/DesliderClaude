@@ -14,6 +14,7 @@ public sealed class DesliderClaudeDbContext : DbContext
     public DbSet<Swipe> Swipes => Set<Swipe>();
     public DbSet<User> Users => Set<User>();
     public DbSet<ExternalLogin> ExternalLogins => Set<ExternalLogin>();
+    public DbSet<Visitor> Visitors => Set<Visitor>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -15,6 +15,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGameNightService, GameNightService>();
         services.AddScoped<IVotingService, VotingService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IVisitorService, VisitorService>();
         services.AddHealthChecks()
             .AddDbContextCheck<DesliderClaudeDbContext>("sqlite");
         return services;

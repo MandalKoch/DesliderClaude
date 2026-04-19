@@ -111,6 +111,41 @@ public sealed class HostFlowTests : PageTest
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Sign in to host" })).ToBeVisibleAsync();
     }
 
+    private async Task<string> CreateNightAsHostAsync(string nightName, string games = "A\nB\nC")
+    {
+        await Page.GotoAsync("/create");
+        await Page.GetByLabel("Night name").FillAsync(nightName);
+        await Page.GetByLabel("Candidate games").FillAsync(games);
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+        var url = new Uri(Page.Url);
+        return url.AbsolutePath.Split('/')[2];
+    }
+
+    [Test]
+    public async Task Anonymous_visitor_auto_joins_second_night_with_same_display_name()
+    {
+        // Host creates two nights while signed in.
+        await RegisterAndSignInAsync(NewUsername());
+        var firstCode = await CreateNightAsHostAsync("Anon Test 1");
+        var secondCode = await CreateNightAsHostAsync("Anon Test 2");
+
+        // Fresh browser context (no cookies) — the anonymous path.
+        var anonymous = await Browser.NewContextAsync(new() { BaseURL = _app.ServerUrl });
+        var anon = await anonymous.NewPageAsync();
+
+        // First night: prompt for name.
+        await anon.GotoAsync($"/night/{firstCode}");
+        await anon.GetByLabel("Your callsign").FillAsync("Mystery Bob");
+        await anon.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+        await Expect(anon).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{firstCode}/swipe$"));
+
+        // Second night: no prompt — visitor cookie carries "Mystery Bob" over.
+        await anon.GotoAsync($"/night/{secondCode}");
+        await Expect(anon).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{secondCode}/swipe$"));
+
+        await anonymous.CloseAsync();
+    }
+
     [Test]
     public async Task Signed_in_voter_skips_the_join_prompt_and_goes_straight_to_swipe()
     {
