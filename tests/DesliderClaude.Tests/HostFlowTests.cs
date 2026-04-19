@@ -122,26 +122,26 @@ public sealed class HostFlowTests : PageTest
     }
 
     [Test]
-    public async Task Anonymous_visitor_auto_joins_second_night_with_same_display_name()
+    public async Task Anonymous_voter_is_prompted_for_a_callsign_on_each_new_night()
     {
-        // Host creates two nights while signed in.
+        // Anonymous identity is per-night now — there's no cross-night cookie
+        // that remembers the display name. Each new share code prompts again.
         await RegisterAndSignInAsync(NewUsername());
         var firstCode = await CreateNightAsHostAsync("Anon Test 1");
         var secondCode = await CreateNightAsHostAsync("Anon Test 2");
 
-        // Fresh browser context (no cookies) — the anonymous path.
         var anonymous = await Browser.NewContextAsync(new() { BaseURL = _app.ServerUrl });
         var anon = await anonymous.NewPageAsync();
 
-        // First night: prompt for name.
         await anon.GotoAsync($"/night/{firstCode}");
         await anon.GetByLabel("Your callsign").FillAsync("Mystery Bob");
         await anon.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
         await Expect(anon).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{firstCode}/swipe$"));
 
-        // Second night: no prompt — visitor cookie carries "Mystery Bob" over.
         await anon.GotoAsync($"/night/{secondCode}");
-        await Expect(anon).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{secondCode}/swipe$"));
+        // Prompt shows up again — browser autocomplete may prefill the input,
+        // but the server-side auto-join has no way to recognise the same visitor.
+        await Expect(anon.GetByLabel("Your callsign")).ToBeVisibleAsync();
 
         await anonymous.CloseAsync();
     }

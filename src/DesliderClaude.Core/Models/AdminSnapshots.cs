@@ -2,7 +2,6 @@ namespace DesliderClaude.Core.Models;
 
 public sealed record AdminOverview(
     int UserCount,
-    int VisitorCount,
     int NightCount,
     int OpenNightCount,
     int ClosedNightCount,

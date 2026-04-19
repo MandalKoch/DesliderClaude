@@ -3,7 +3,6 @@
 @using DesliderClaude.Core.Services
 @inject IGameNightService GameNights
 @inject IVotingService Voting
-@inject IVisitorService Visitors
 @inject NavigationManager Nav
 
 <PageTitle>@(_night?.Name ?? "Game Night") — DesliderClaude</PageTitle>
@@ -85,7 +84,7 @@ else
                 var token = EnsureVoterToken(voterCookieName, existingVoterToken);
                 try
                 {
-                    await Voting.JoinAsync(_night.Id, username, token, userId);
+                    await Voting.JoinAsync(_night.Id, username, token, uid);
                     Nav.NavigateTo($"/night/{ShareCode}/swipe");
                     return;
                 }
@@ -94,30 +93,6 @@ else
                     // Fall through to the manual form.
                 }
                 _prefill = username;
-                return;
-            }
-        }
-
-        // 3. Known anonymous visitor with a remembered display name? Auto-join.
-        var visitorToken = HttpContext.Request.Cookies[VisitorCookie.CookieName];
-        if (!string.IsNullOrEmpty(visitorToken))
-        {
-            var visitor = await Visitors.GetByTokenAsync(visitorToken);
-            if (visitor is not null)
-            {
-                var token = EnsureVoterToken(voterCookieName, existingVoterToken);
-                try
-                {
-                    await Voting.JoinAsync(_night.Id, visitor.DisplayName, token, null, visitor.Id);
-                    await Visitors.TouchAsync(visitorToken);
-                    Nav.NavigateTo($"/night/{ShareCode}/swipe");
-                    return;
-                }
-                catch (InvalidOperationException)
-                {
-                    // Fall through to manual form.
-                }
-                _prefill = visitor.DisplayName;
             }
         }
     }
@@ -144,39 +119,16 @@ else
         var voterCookieName = VoterCookie.Name(ShareCode);
         var voterToken = EnsureVoterToken(voterCookieName, HttpContext.Request.Cookies[voterCookieName]);
 
-        // Resolve the voter's identity (signed-in user, anonymous visitor, or neither).
         Guid? userId = null;
-        Guid? visitorId = null;
-
         if (AuthState is not null)
         {
             var state = await AuthState;
             userId = state.User.GetUserId();
         }
 
-        if (userId is null)
-        {
-            // No user → persist as an anonymous Visitor so this name+vote history
-            // survives across nights on the same browser.
-            var visitorToken = HttpContext.Request.Cookies[VisitorCookie.CookieName];
-            Visitor? visitor = null;
-            if (!string.IsNullOrEmpty(visitorToken))
-            {
-                visitor = await Visitors.UpdateDisplayNameAsync(visitorToken, name)
-                    ?? await Visitors.CreateAsync(visitorToken, name);
-            }
-            else
-            {
-                visitorToken = VisitorCookie.NewToken();
-                HttpContext.Response.Cookies.Append(VisitorCookie.CookieName, visitorToken, VisitorCookie.Options);
-                visitor = await Visitors.CreateAsync(visitorToken, name);
-            }
-            visitorId = visitor.Id;
-        }
-
         try
         {
-            await Voting.JoinAsync(_night.Id, name, voterToken, userId, visitorId);
+            await Voting.JoinAsync(_night.Id, name, voterToken, userId);
         }
         catch (InvalidOperationException ex)
         {

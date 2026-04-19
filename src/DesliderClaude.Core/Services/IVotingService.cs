@@ -9,7 +9,6 @@ public interface IVotingService
         string displayName,
         string voterToken,
         Guid? userId = null,
-        Guid? visitorId = null,
         CancellationToken ct = default);
 
     Task RecordSwipeAsync(string voterToken, Guid gameId, bool yes, CancellationToken ct = default);

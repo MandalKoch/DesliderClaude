@@ -27,7 +27,6 @@ internal sealed partial class AdminService : IAdminService
 
         return new AdminOverview(
             UserCount: await _db.Users.CountAsync(ct),
-            VisitorCount: await _db.Visitors.CountAsync(ct),
             NightCount: await _db.GameNights.CountAsync(ct),
             OpenNightCount: await _db.GameNights.CountAsync(n => !n.IsClosed, ct),
             ClosedNightCount: await _db.GameNights.CountAsync(n => n.IsClosed, ct),
