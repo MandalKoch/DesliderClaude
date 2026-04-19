@@ -2,18 +2,24 @@ using System.Security.Cryptography;
 using DesliderClaude.Core.Models;
 using DesliderClaude.Core.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DesliderClaude.Data.Services.Imps;
 
-internal sealed class GameNightService : IGameNightService
+internal sealed partial class GameNightService : IGameNightService
 {
     private readonly DesliderClaudeDbContext _db;
     private readonly IShareCodeGenerator _shareCodes;
+    private readonly ILogger<GameNightService> _logger;
 
-    public GameNightService(DesliderClaudeDbContext db, IShareCodeGenerator shareCodes)
+    public GameNightService(
+        DesliderClaudeDbContext db,
+        IShareCodeGenerator shareCodes,
+        ILogger<GameNightService> logger)
     {
         _db = db;
         _shareCodes = shareCodes;
+        _logger = logger;
     }
 
     public async Task<GameNight> CreateAsync(
@@ -38,6 +44,7 @@ internal sealed class GameNightService : IGameNightService
 
         _db.GameNights.Add(night);
         await _db.SaveChangesAsync(ct);
+        LogGameNightCreated(shareCode, night.Games.Count, createdByUserId);
         return night;
     }
 
@@ -89,6 +96,7 @@ internal sealed class GameNightService : IGameNightService
         night.IsClosed = true;
         night.ClosedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
+        LogGameNightClosed(night.ShareCode);
     }
 
     private async Task<string> GenerateUniqueShareCodeAsync(CancellationToken ct)
@@ -100,4 +108,12 @@ internal sealed class GameNightService : IGameNightService
         }
         throw new InvalidOperationException("Could not generate a unique share code after 10 attempts.");
     }
+
+    [LoggerMessage(EventId = 1001, Level = LogLevel.Information,
+        Message = "Created game night {ShareCode} ({GameCount} games, hostUserId={HostUserId})")]
+    private partial void LogGameNightCreated(string shareCode, int gameCount, Guid? hostUserId);
+
+    [LoggerMessage(EventId = 1002, Level = LogLevel.Information,
+        Message = "Closed game night {ShareCode}")]
+    private partial void LogGameNightClosed(string shareCode);
 }
