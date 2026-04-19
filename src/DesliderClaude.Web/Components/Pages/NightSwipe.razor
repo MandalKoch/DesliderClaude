@@ -48,8 +48,14 @@ else
                 <div class="swipe-card-corners"></div>
                 <div class="swipe-card-label">candidate</div>
                 <h1 class="swipe-card-title">@_currentGame.Name</h1>
-                <span class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">Play</span>
-                <span class="swipe-stamp swipe-stamp-no" data-swipe-overlay-no aria-hidden="true">Pass</span>
+                <div class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">
+                    <span class="swipe-stamp-icon">✓</span>
+                    <span class="swipe-stamp-label">Play</span>
+                </div>
+                <div class="swipe-stamp swipe-stamp-no" data-swipe-overlay-no aria-hidden="true">
+                    <span class="swipe-stamp-icon">✕</span>
+                    <span class="swipe-stamp-label">Pass</span>
+                </div>
             </article>
             <p class="swipe-hint" aria-hidden="true">Drag the card · or use the buttons · swipes update live</p>
         </div>

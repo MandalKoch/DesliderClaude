@@ -866,39 +866,48 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
     z-index: 1;
 }
 
-/* drag stamps — faction-colored verdicts fading in with drag progress */
+/* drag stamps — faction-colored verdicts centered on the card, filling it up. */
 .swipe-stamp {
     position: absolute;
-    top: var(--s-5);
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.25rem, 1.5vw, 0.75rem);
     font-family: var(--font-hud);
-    font-weight: 700;
-    font-size: clamp(1.25rem, 4.5vw, 1.75rem);
-    letter-spacing: 0.28em;
+    font-weight: 800;
     text-transform: uppercase;
-    padding: 0.4rem 1rem 0.35rem;
-    border: 2px solid currentColor;
     opacity: 0;
     pointer-events: none;
     z-index: 2;
     user-select: none;
-    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-    background: rgba(5, 8, 24, 0.55);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(5, 8, 24, 0.35);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+.swipe-stamp-icon {
+    font-size: clamp(7rem, 30vw, 12rem);
+    line-height: 0.9;
+    text-shadow: 0 0 32px currentColor;
+}
+.swipe-stamp-label {
+    font-size: clamp(2.25rem, 7vw, 3.5rem);
+    letter-spacing: 0.32em;
+    padding: 0.35rem 1.5rem 0.3rem;
+    border: 3px solid currentColor;
+    clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+    box-shadow: 0 0 24px -4px currentColor;
 }
 .swipe-stamp-yes {
-    right: var(--s-5);
     color: var(--cyan);
-    transform: rotate(-12deg);
-    text-shadow: 0 0 16px var(--cyan-glow);
-    box-shadow: 0 0 20px -2px var(--cyan-glow);
+    transform: rotate(-8deg);
+    text-shadow: 0 0 24px var(--cyan-glow);
 }
 .swipe-stamp-no {
-    left: var(--s-5);
     color: var(--crimson);
-    transform: rotate(12deg);
-    text-shadow: 0 0 16px var(--crimson-glow);
-    box-shadow: 0 0 20px -2px var(--crimson-glow);
+    transform: rotate(8deg);
+    text-shadow: 0 0 24px var(--crimson-glow);
 }
 
 .swipe-actions {
