@@ -18,7 +18,13 @@
     <nav class="app-nav">
         <AuthorizeView>
             <Authorized>
-                <a class="app-nav-link" href="/account">@context.User.Identity?.Name</a>
+                <a class="app-nav-link is-signed-in" href="/account">
+                    <svg class="app-nav-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="8" cy="5.5" r="2.75" stroke="currentColor" stroke-width="1.4" />
+                        <path d="M2.5 13.5c0-2.5 2.5-4.25 5.5-4.25s5.5 1.75 5.5 4.25" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                    </svg>
+                    <span>@context.User.Identity?.Name</span>
+                </a>
             </Authorized>
             <NotAuthorized>
                 <a class="app-nav-link" href="/signin">Sign in</a>
