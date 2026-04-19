@@ -98,9 +98,17 @@ else
                         </td>
                         <td>@n.CreatedAt.ToString("MMM d, HH:mm")</td>
                         <td>
+                            @if (!n.IsClosed)
+                            {
+                                <form method="post" @formname="@($"close-night-{n.Id}")" @onsubmit="() => CloseNightAsync(n.Id)">
+                                    <AntiforgeryToken />
+                                    <button type="submit" class="btn btn-ghost btn-sm" title="Close voting"
+                                            onclick="return confirm('Close voting on “@n.Name”? Locks the ranking and flips every voter to the winner.');">Close</button>
+                                </form>
+                            }
                             <form method="post" @formname="@($"del-night-{n.Id}")" @onsubmit="() => DeleteNightAsync(n.Id)">
                                 <AntiforgeryToken />
-                                <button type="submit" class="btn btn-ghost btn-sm"
+                                <button type="submit" class="btn btn-ghost btn-sm" title="Delete night"
                                         onclick="return confirm('Delete “@n.Name”? This removes all its games, voters, and swipes.');">✕</button>
                             </form>
                         </td>
@@ -207,6 +215,20 @@ else
         try
         {
             await AdminSvc.DeleteNightAsync(nightId);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        Nav.NavigateTo("/admin");
+    }
+
+    private async Task CloseNightAsync(Guid nightId)
+    {
+        _error = null;
+        try
+        {
+            await AdminSvc.CloseNightAsync(nightId);
         }
         catch (Exception ex)
         {

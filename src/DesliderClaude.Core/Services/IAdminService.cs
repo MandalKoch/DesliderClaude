@@ -18,4 +18,8 @@ public interface IAdminService
 
     /// <summary>Hard-delete a Game Night, cascading games / voters / swipes.</summary>
     Task DeleteNightAsync(Guid nightId, CancellationToken ct = default);
+
+    /// <summary>Close voting on a Game Night without needing the host token. No-op
+    /// if the night is already closed.</summary>
+    Task CloseNightAsync(Guid nightId, CancellationToken ct = default);
 }
