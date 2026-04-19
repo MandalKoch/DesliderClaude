@@ -28,9 +28,19 @@
     <span>or</span>
 </div>
 
-<div class="btn-row btn-row-center">
-    <a class="btn btn-cyan" href="/create">Host a new night →</a>
-</div>
+<AuthorizeView>
+    <Authorized>
+        <div class="btn-row btn-row-center">
+            <a class="btn btn-cyan" href="/create">Host a new night →</a>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="btn-row btn-row-center">
+            <a class="btn btn-cyan" href="/signin">Sign in to host →</a>
+            <a class="btn btn-ghost" href="/register">Create account</a>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 <hr />
 

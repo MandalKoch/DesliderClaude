@@ -15,7 +15,16 @@
         </svg>
         <span><span class="name">Deslider</span><span class="name-dim">Claude</span></span>
     </a>
-    <span class="app-header-tag">online</span>
+    <nav class="app-nav">
+        <AuthorizeView>
+            <Authorized>
+                <a class="app-nav-link" href="/account">@context.User.Identity?.Name</a>
+            </Authorized>
+            <NotAuthorized>
+                <a class="app-nav-link" href="/signin">Sign in</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
 </header>
 
 <main class="page">

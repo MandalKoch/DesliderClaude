@@ -1,0 +1,123 @@
+@page "/account"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IUserService Users
+@inject NavigationManager Nav
+
+<PageTitle>Account — DesliderClaude</PageTitle>
+
+<section class="hero">
+    <span class="kicker">Account</span>
+    <h1 class="hero-title">@(_user?.Username ?? "—")</h1>
+    <p class="hero-lede">
+        Signed in via <strong>@_provider</strong>.
+    </p>
+</section>
+
+@if (_user is null)
+{
+    <p class="subtle">Loading…</p>
+}
+else
+{
+    @if (_user.PasswordHash is not null)
+    {
+        <div class="form-card">
+            <h2 style="margin: 0 0 var(--s-3);">Change password</h2>
+            <form method="post" @formname="change-password" @onsubmit="ChangePasswordAsync">
+                <AntiforgeryToken />
+                <label for="current">Current password</label>
+                <input id="current" name="Pwd.Current" type="password" autocomplete="current-password" required />
+
+                <label for="new-pwd">New password <span class="subtle">(8+ characters)</span></label>
+                <input id="new-pwd" name="Pwd.New" type="password" autocomplete="new-password" required />
+
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-primary">Update password</button>
+                </div>
+            </form>
+            @if (!string.IsNullOrEmpty(_pwdError))
+            {
+                <p class="text-danger">@_pwdError</p>
+            }
+            @if (_pwdOk)
+            {
+                <p class="text-ok">Password updated.</p>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="subtle">
+            This account has no local password. Reset or manage it via your external provider.
+        </p>
+    }
+
+    <hr />
+
+    <div class="form-card">
+        <h2 style="margin: 0 0 var(--s-3);">Sign out</h2>
+        <p class="subtle">Clears the session cookie on this device.</p>
+        <form method="post" @formname="signout" @onsubmit="SignOutAsync">
+            <AntiforgeryToken />
+            <div class="btn-row">
+                <button type="submit" class="btn btn-ghost">Sign out</button>
+            </div>
+        </form>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
+    [SupplyParameterFromForm] public ChangePasswordModel? Pwd { get; set; }
+
+    private User? _user;
+    private string _provider = "local";
+    private string? _pwdError;
+    private bool _pwdOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+        var state = await AuthState;
+        var id = state.User.GetUserId();
+        _provider = state.User.FindFirst("provider")?.Value ?? "local";
+        if (id is { } uid)
+        {
+            _user = await Users.GetByIdAsync(uid);
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        if (_user is null) return;
+        _pwdError = null;
+        _pwdOk = false;
+
+        try
+        {
+            await Users.ChangePasswordAsync(_user.Id, Pwd?.Current ?? string.Empty, Pwd?.New ?? string.Empty);
+            _pwdOk = true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _pwdError = ex.Message;
+        }
+    }
+
+    private async Task SignOutAsync()
+    {
+        if (HttpContext is null) return;
+        await HttpContext.SignOutUserAsync();
+        Nav.NavigateTo("/");
+    }
+
+    public sealed class ChangePasswordModel
+    {
+        public string Current { get; set; } = string.Empty;
+        public string New { get; set; } = string.Empty;
+    }
+}

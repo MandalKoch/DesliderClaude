@@ -1,5 +1,7 @@
 @page "/create"
 @using DesliderClaude.Core.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject IGameNightService GameNights
 @inject NavigationManager Nav
 

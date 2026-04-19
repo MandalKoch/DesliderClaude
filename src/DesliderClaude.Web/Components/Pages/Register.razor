@@ -1,0 +1,74 @@
+@page "/register"
+@using DesliderClaude.Core.Services
+@inject IUserService Users
+@inject NavigationManager Nav
+
+<PageTitle>Create account — DesliderClaude</PageTitle>
+
+<section class="hero">
+    <span class="kicker">New account</span>
+    <h1 class="hero-title">Join the table.</h1>
+    <p class="hero-lede">Lightweight local account — username + password, nothing else to fill in.</p>
+</section>
+
+<div class="form-card">
+    <form method="post" @formname="register" @onsubmit="SubmitAsync">
+        <AntiforgeryToken />
+        <label for="username">Username</label>
+        <input id="username" name="Form.Username" value="@Form?.Username" maxlength="64"
+               autocomplete="username" autocapitalize="off" spellcheck="false" required autofocus />
+
+        <label for="password">Password <span class="subtle">(8+ characters)</span></label>
+        <input id="password" name="Form.Password" type="password"
+               autocomplete="new-password" required />
+
+        <div class="btn-row">
+            <a class="btn btn-ghost" href="/signin">← Sign in instead</a>
+            <button type="submit" class="btn btn-primary">Create account →</button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger">@_error</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [SupplyParameterFromForm] public RegisterFormModel? Form { get; set; }
+
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        if (HttpContext is null) return;
+
+        var username = Form?.Username?.Trim();
+        var password = Form?.Password ?? string.Empty;
+        if (string.IsNullOrEmpty(username))
+        {
+            _error = "Enter a username.";
+            return;
+        }
+
+        try
+        {
+            var user = await Users.RegisterAsync(username, password);
+            await HttpContext.SignInUserAsync(user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+            return;
+        }
+
+        Nav.NavigateTo("/");
+    }
+
+    public sealed class RegisterFormModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

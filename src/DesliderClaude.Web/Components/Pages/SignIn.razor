@@ -1,0 +1,80 @@
+@page "/signin"
+@using DesliderClaude.Core.Services
+@inject IUserService Users
+@inject NavigationManager Nav
+
+<PageTitle>Sign in — DesliderClaude</PageTitle>
+
+<section class="hero">
+    <span class="kicker">Sign in</span>
+    <h1 class="hero-title">Welcome back.</h1>
+</section>
+
+<div class="form-card">
+    <form method="post" @formname="signin" @onsubmit="SubmitAsync">
+        <AntiforgeryToken />
+        <label for="username">Username</label>
+        <input id="username" name="Form.Username" value="@Form?.Username"
+               autocomplete="username" autocapitalize="off" spellcheck="false" required autofocus />
+
+        <label for="password">Password</label>
+        <input id="password" name="Form.Password" type="password"
+               autocomplete="current-password" required />
+
+        <div class="btn-row">
+            <a class="btn btn-ghost" href="/">← Home</a>
+            <button type="submit" class="btn btn-primary">Sign in →</button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger">@_error</p>
+    }
+</div>
+
+<p class="subtle" style="text-align: center; margin-top: var(--s-5);">
+    No account yet? <a href="/register">Create one →</a>
+</p>
+
+@code {
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [SupplyParameterFromForm] public SignInFormModel? Form { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        if (HttpContext is null) return;
+
+        var username = Form?.Username?.Trim();
+        var password = Form?.Password ?? string.Empty;
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+        {
+            _error = "Enter both fields.";
+            return;
+        }
+
+        var user = await Users.SignInAsync(username, password);
+        if (user is null)
+        {
+            _error = "Wrong username or password.";
+            return;
+        }
+
+        await HttpContext.SignInUserAsync(user);
+        Nav.NavigateTo(SafeReturnUrl(ReturnUrl));
+    }
+
+    private static string SafeReturnUrl(string? candidate)
+        => !string.IsNullOrEmpty(candidate) && candidate.StartsWith('/') && !candidate.StartsWith("//")
+            ? candidate
+            : "/";
+
+    public sealed class SignInFormModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

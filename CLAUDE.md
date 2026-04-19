@@ -132,7 +132,9 @@ DesliderClaude.slnx
 
 **Product** — the full MVP loop works end-to-end and is live at [desliderclaude.fly.dev](https://desliderclaude.fly.dev/):
 
-- Home page → "Host a new night →" opens `/create` (name, optional date, one-per-line game list). Submit mints a `GameNight` + `HostToken`, drops a `deslider-host-{shareCode}` cookie, redirects to `/night/{shareCode}/host`.
+- **Auth (phase 1, local):** cookie-based login (`deslider-auth`, 30-day sliding, HttpOnly). `/register` and `/signin` are local username + password (PBKDF2-SHA256, 600k iters, versioned hash). `/account` shows the current username + provider, lets local users change their password, and has sign-out. The `ExternalLogin` table is in place for Google/Apple to drop in without a schema change.
+- Home page → share-code join form is always visible. **Signed-in** users see "Host a new night →"; unauth users see "Sign in to host →" / "Create account". `/create` has `[Authorize]` (redirects to `/signin?returnUrl=/create`).
+- `/create` mints a `GameNight` + `HostToken`, drops a `deslider-host-{shareCode}` cookie, redirects to `/night/{shareCode}/host`.
 - Host dashboard — share URL with copy button, live counters (voters / games / swipes), compact ranking snapshot (10 s meta-refresh while open), **Close voting** button. Cookie-gated: no cookie / mismatch → "Not your night" screen.
 - Voter loop unchanged — `/night/{shareCode}` join → `/swipe` continuous weighted-random deck → `/ranking` live standings → `/winner` hero view. Closing voting flips every voter's swipe screen to the winner.
 - Swipe UI is still static SSR + enhanced navigation; pointer-drag gesture via `wwwroot/swipe.js`.
@@ -145,14 +147,20 @@ DesliderClaude.slnx
 
 **Tests** — `tests/DesliderClaude.Tests/` (NUnit + Playwright) drives the host flow end-to-end in real Chromium. `dotnet test` is a one-liner after the first-time `playwright install chromium`.
 
-**Next up** — PWA manifest + service worker (Add-to-Home-Screen); then SignalR to replace the 5 s ranking refresh and the 10 s host-dashboard refresh; then host history (`/host/history`) listing past nights.
+**Next up**
+- Phase 2: link `GameNight.CreatedByUserId` + `Voter.UserId` to the logged-in user so the landing page can list "nights you're part of" (filter + order; default order = missing-vote first, then nearest `TargetDate`).
+- Google OAuth — slot `Microsoft.AspNetCore.Authentication.Google` in behind the existing cookie scheme, link via the `ExternalLogin` table.
+- Apple Sign-In via `AspNet.Security.OAuth.Apple` (required if we ever ship MAUI to the App Store).
+- PWA manifest + service worker; then SignalR to replace the meta-refresh loops.
 
 **Still deferred / TBD**
 - Ranking tie-breaker rule (Open Question 3) — right now it's `ORDER BY YesCount DESC, Name ASC`, so alphabetical on ties. Good enough for MVP.
-- Proper host identity — still the lightweight cookie. v2 swaps in OAuth.
-- Host has no way to recover a lost cookie today. Survivable for friends-group MVP; revisit before any broader launch.
+- Host cookie (`deslider-host-{shareCode}`) still guards the host dashboard; will be replaced by "are you the `CreatedByUserId`?" once phase 2 lands.
+- Host has no way to recover a lost cookie today. Phase 2 solves this once the night is tied to a user account.
 
 ### History
+
+**2026-04-19 (later III)** — Auth phase 1 (local username + password). New `User` entity + `ExternalLogin` table (empty for now — the shape is here so Google/Apple drop in without a schema change). `PasswordHasher` is a self-contained PBKDF2-SHA256/600k-iter hasher (no Identity framework). Cookie auth scheme (`deslider-auth`, HttpOnly, 30-day sliding). New pages: `/register`, `/signin`, `/account` (change password + sign out). `/create` is `[Authorize]`-gated. Home CTA toggles via `<AuthorizeView>`; header shows the username (linked to `/account`) when signed in, "Sign in" otherwise. Migration `AddUsers`. Six E2E tests covering the full auth + create flow.
 
 **2026-04-19 (later II)** — Playwright E2E tests added. `tests/DesliderClaude.Tests/` is an NUnit project using `Microsoft.Playwright.NUnit` + `Microsoft.AspNetCore.Mvc.Testing`. `WebAppFixture` is a `WebApplicationFactory<Program>` that builds **two** hosts on `CreateHost` — a TestServer one for the factory's internals and a real Kestrel one bound to a random loopback port for Playwright to hit (canonical workaround for dotnet/aspnetcore#33846). Each fixture uses an ephemeral SQLite file under `%TEMP%/desliderclaude-test-*.db`. `HostFlowTests` covers the happy path (create → dashboard → close) and cookie-gating (fresh browser context hitting the host URL gets "Not your night"). `public partial class Program;` added to `Web/Program.cs` so the factory can reference it. First-time setup: `pwsh tests/DesliderClaude.Tests/bin/Debug/net10.0/playwright.ps1 install chromium`, then `dotnet test`.
 
