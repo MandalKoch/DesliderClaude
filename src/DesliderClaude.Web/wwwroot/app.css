@@ -651,6 +651,34 @@ a:hover { color: var(--text); border-color: var(--cyan); }
 }
 .admin-tab.is-active .admin-tab-count { color: var(--cyan-soft); border-color: rgba(79, 209, 255, 0.3); }
 
+.admin-row-actions {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+.admin-inline-form { position: relative; }
+.admin-inline-form summary {
+    cursor: pointer;
+    list-style: none;
+}
+.admin-inline-form summary::-webkit-details-marker { display: none; }
+.admin-inline-form[open] summary { color: var(--cyan); }
+.admin-inline-form form {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    padding: 8px;
+    background: rgba(5, 8, 24, 0.75);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-sm);
+    position: absolute;
+    right: 0;
+    z-index: 10;
+    min-width: 240px;
+}
+.admin-inline-form form input { flex: 1; font-size: 0.9rem; padding: 6px 10px; }
+
 main.page {
     max-width: 680px;
     margin: 0 auto;

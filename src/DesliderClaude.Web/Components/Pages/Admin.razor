@@ -87,18 +87,28 @@ else
                             <td class="right">@u.SwipeCount</td>
                             <td>@u.CreatedAt.ToString("MMM d, HH:mm")</td>
                             <td>
-                                @if (u.Id == _currentUserId)
-                                {
-                                    <span class="subtle">you</span>
-                                }
-                                else
-                                {
-                                    <form method="post" @formname="@($"del-user-{u.Id}")" @onsubmit="() => DeleteUserAsync(u.Id)" data-enhance>
-                                        <AntiforgeryToken />
-                                        <button type="submit" class="btn btn-ghost btn-sm"
-                                                onclick="return confirm('Delete user “@u.Username”? Their hosted nights stay but lose the owner link.');">✕</button>
-                                    </form>
-                                }
+                                <div class="admin-row-actions">
+                                    <details class="admin-inline-form">
+                                        <summary class="btn btn-ghost btn-sm" role="button">Set password</summary>
+                                        <form method="post" @formname="@($"set-pwd-{u.Id}")" @onsubmit="() => SetPasswordAsync(u.Id)" data-enhance>
+                                            <AntiforgeryToken />
+                                            <input type="password" name="Pwd.Value" autocomplete="new-password" required placeholder="New password" />
+                                            <button type="submit" class="btn btn-cyan btn-sm">Save</button>
+                                        </form>
+                                    </details>
+                                    @if (u.Id == _currentUserId)
+                                    {
+                                        <span class="subtle">you</span>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" @formname="@($"del-user-{u.Id}")" @onsubmit="() => DeleteUserAsync(u.Id)" data-enhance>
+                                            <AntiforgeryToken />
+                                            <button type="submit" class="btn btn-ghost btn-sm"
+                                                    onclick="return confirm('Delete user “@u.Username”? Their hosted nights stay but lose the owner link.');">✕</button>
+                                        </form>
+                                    }
+                                </div>
                             </td>
                         </tr>
                     }
@@ -211,6 +221,12 @@ else
 @code {
     [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromQuery] public string? Tab { get; set; }
+    [SupplyParameterFromForm] public PasswordFormModel? Pwd { get; set; }
+
+    public sealed class PasswordFormModel
+    {
+        public string Value { get; set; } = string.Empty;
+    }
 
     private AdminOverview? _overview;
     private IReadOnlyList<AdminUserRow> _users = Array.Empty<AdminUserRow>();
@@ -276,6 +292,16 @@ else
         _error = null;
         if (userId == _currentUserId) { _error = "You can't delete yourself."; return; }
         try { await AdminSvc.DeleteUserAsync(userId); }
+        catch (Exception ex) { _error = ex.Message; }
+        await LoadAsync();
+    }
+
+    private async Task SetPasswordAsync(Guid userId)
+    {
+        _error = null;
+        var pwd = Pwd?.Value;
+        if (string.IsNullOrEmpty(pwd)) { _error = "Enter a new password."; return; }
+        try { await AdminSvc.SetUserPasswordAsync(userId, pwd); }
         catch (Exception ex) { _error = ex.Message; }
         await LoadAsync();
     }

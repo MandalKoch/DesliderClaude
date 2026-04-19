@@ -120,6 +120,15 @@ internal sealed partial class AdminService : IAdminService
         LogUserDeleted(userId, user.Username);
     }
 
+    public async Task SetUserPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
+            ?? throw new InvalidOperationException("User not found.");
+        user.PasswordHash = PasswordHasher.Hash(newPassword);
+        await _db.SaveChangesAsync(ct);
+        LogUserPasswordSet(userId, user.Username);
+    }
+
     public async Task DeleteNightAsync(Guid nightId, CancellationToken ct = default)
     {
         var night = await _db.GameNights.FirstOrDefaultAsync(n => n.Id == nightId, ct)
@@ -193,4 +202,8 @@ internal sealed partial class AdminService : IAdminService
     [LoggerMessage(EventId = 3005, Level = LogLevel.Warning,
         Message = "Admin re-opened game night {NightId} ({ShareCode})")]
     private partial void LogNightReopened(Guid nightId, string shareCode);
+
+    [LoggerMessage(EventId = 3006, Level = LogLevel.Warning,
+        Message = "Admin set password for user {UserId} ({Username})")]
+    private partial void LogUserPasswordSet(Guid userId, string username);
 }

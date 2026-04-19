@@ -16,6 +16,10 @@ public interface IAdminService
     /// FK (SetNull), not the rows themselves.</summary>
     Task DeleteUserAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>Admin-override password reset. Sets (or overwrites) the local
+    /// password hash; doesn't require the user's current password.</summary>
+    Task SetUserPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default);
+
     /// <summary>Hard-delete a Game Night, cascading games / voters / swipes.</summary>
     Task DeleteNightAsync(Guid nightId, CancellationToken ct = default);
 
