@@ -604,6 +604,53 @@ a:hover { color: var(--text); border-color: var(--cyan); }
 .admin-row-sub:hover { color: var(--cyan); }
 .admin-row-links { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap; }
 
+/* ---------- admin tab strip ---------- */
+.admin-tabs {
+    display: flex;
+    gap: 2px;
+    margin: var(--s-6) 0 var(--s-3);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.admin-tab {
+    font-family: var(--font-hud);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 10px 16px 9px;
+    border: 1px solid transparent;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.admin-tab:hover {
+    color: var(--text);
+    background: rgba(79, 209, 255, 0.04);
+}
+.admin-tab.is-active {
+    color: var(--cyan);
+    border-bottom-color: var(--cyan);
+    background: rgba(79, 209, 255, 0.05);
+}
+.admin-tab-count {
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--text-dim);
+    padding: 1px 7px;
+    background: rgba(5, 8, 24, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-weight: 500;
+}
+.admin-tab.is-active .admin-tab-count { color: var(--cyan-soft); border-color: rgba(79, 209, 255, 0.3); }
+
 main.page {
     max-width: 680px;
     margin: 0 auto;
