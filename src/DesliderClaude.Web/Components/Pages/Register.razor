@@ -28,7 +28,16 @@
         </div>
     </form>
 
-    @if (!string.IsNullOrEmpty(_error))
+    @if (!string.IsNullOrEmpty(_taken) && !string.IsNullOrEmpty(_suggestion))
+    {
+        <div class="notice notice-warn">
+            <p>
+                <strong>“@_taken”</strong> is already taken.
+                How about <strong>@_suggestion</strong>?
+            </p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_error))
     {
         <p class="text-danger">@_error</p>
     }
@@ -39,16 +48,29 @@
     [SupplyParameterFromForm] public RegisterFormModel? Form { get; set; }
 
     private string? _error;
+    private string? _taken;
+    private string? _suggestion;
 
     private async Task SubmitAsync()
     {
         if (HttpContext is null) return;
 
-        var username = Form?.Username?.Trim();
+        var username = Form?.Username?.Trim() ?? string.Empty;
         var password = Form?.Password ?? string.Empty;
         if (string.IsNullOrEmpty(username))
         {
             _error = "Enter a username.";
+            return;
+        }
+
+        // Pre-flight taken check so we can offer a suggestion *and* pre-fill the field
+        // before even hitting the RegisterAsync path.
+        if (await Users.IsUsernameTakenAsync(username))
+        {
+            _taken = username;
+            _suggestion = await Users.SuggestAvailableUsernameAsync(username);
+            // Pre-fill the input with the suggestion — user just hits Create again.
+            Form = new RegisterFormModel { Username = _suggestion, Password = password };
             return;
         }
 

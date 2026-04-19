@@ -1242,6 +1242,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
 .notice p + p { margin-top: var(--s-2); }
 .notice-closed { border-left-color: var(--text-dim); }
 .notice-danger { border-left-color: var(--crimson); }
+.notice-warn { border-left-color: var(--gold); background: rgba(255, 180, 67, 0.06); }
 
 .text-danger {
     color: var(--crimson);

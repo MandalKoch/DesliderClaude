@@ -57,6 +57,32 @@ internal sealed partial class UserService : IUserService
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
         => _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
+    public Task<bool> IsUsernameTakenAsync(string username, CancellationToken ct = default)
+    {
+        var normalized = Normalize(username);
+        return _db.Users.AnyAsync(u => u.Username == normalized, ct);
+    }
+
+    public async Task<string> SuggestAvailableUsernameAsync(string desired, CancellationToken ct = default)
+    {
+        var stem = Normalize(desired);
+        if (string.IsNullOrWhiteSpace(stem)) stem = "player";
+
+        // User's canonical example first.
+        var candidate = $"{stem}_1337";
+        if (!await _db.Users.AnyAsync(u => u.Username == candidate, ct)) return candidate;
+
+        // Then random 4-digit suffixes (collision-cheap at our scale).
+        for (var i = 0; i < 20; i++)
+        {
+            candidate = $"{stem}_{Random.Shared.Next(1000, 10000)}";
+            if (!await _db.Users.AnyAsync(u => u.Username == candidate, ct)) return candidate;
+        }
+
+        // Last resort: a short v7 fragment — globally unique by construction.
+        return $"{stem}_{Guid.CreateVersion7():N}"[..(stem.Length + 9)];
+    }
+
     public async Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken ct = default)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)

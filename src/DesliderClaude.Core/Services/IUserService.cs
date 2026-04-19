@@ -18,6 +18,15 @@ public interface IUserService
 
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>Return <c>true</c> if a local user already owns this (normalized) username.</summary>
+    Task<bool> IsUsernameTakenAsync(string username, CancellationToken ct = default);
+
+    /// <summary>
+    /// Given a username the caller wanted but couldn't have, return one that's free.
+    /// Tries <c>{desired}_1337</c> first, then random 4-digit suffixes.
+    /// </summary>
+    Task<string> SuggestAvailableUsernameAsync(string desired, CancellationToken ct = default);
+
     /// <summary>
     /// Change the local password. Throws on wrong current password or if the
     /// user has no local password (external-only account).
