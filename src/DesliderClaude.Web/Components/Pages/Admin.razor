@@ -1,8 +1,6 @@
 @page "/admin"
 @using DesliderClaude.Core.Models
 @using DesliderClaude.Core.Services
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Roles = "Admin")]
 @inject IAdminService AdminSvc
 @inject NavigationManager Nav
 

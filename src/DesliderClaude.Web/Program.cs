@@ -1,5 +1,6 @@
 using DesliderClaude.Core.Options;
 using DesliderClaude.Data;
+using DesliderClaude.Web;
 using DesliderClaude.Web.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +62,8 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseAdminBasicAuth();
 
 app.UseAntiforgery();
 

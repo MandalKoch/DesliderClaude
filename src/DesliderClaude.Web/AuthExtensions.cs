@@ -1,30 +1,20 @@
 using System.Security.Claims;
 using DesliderClaude.Core.Models;
-using DesliderClaude.Core.Options;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.Options;
 
 namespace DesliderClaude.Web;
 
 internal static class AuthExtensions
 {
-    public const string AdminRole = "Admin";
-
     public static Task SignInUserAsync(this HttpContext http, User user)
     {
-        var admins = http.RequestServices.GetRequiredService<IOptions<AdminOptions>>().Value.Usernames;
-        var isAdmin = admins.Contains(user.Username, StringComparer.OrdinalIgnoreCase);
-
-        var claims = new List<Claim>
+        var identity = new ClaimsIdentity(new[]
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new("provider", "local"),
-        };
-        if (isAdmin) claims.Add(new Claim(ClaimTypes.Role, AdminRole));
-
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim("provider", "local"),
+        }, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
         return http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
     }
