@@ -887,16 +887,16 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
     -webkit-backdrop-filter: blur(4px);
 }
 .swipe-stamp-yes {
-    left: var(--s-5);
+    right: var(--s-5);
     color: var(--cyan);
-    transform: rotate(12deg);
+    transform: rotate(-12deg);
     text-shadow: 0 0 16px var(--cyan-glow);
     box-shadow: 0 0 20px -2px var(--cyan-glow);
 }
 .swipe-stamp-no {
-    right: var(--s-5);
+    left: var(--s-5);
     color: var(--crimson);
-    transform: rotate(-12deg);
+    transform: rotate(12deg);
     text-shadow: 0 0 16px var(--crimson-glow);
     box-shadow: 0 0 20px -2px var(--crimson-glow);
 }
