@@ -1,8 +1,10 @@
+using DesliderClaude.Core.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace DesliderClaude.Tests;
@@ -20,12 +22,19 @@ public sealed class WebAppFixture : WebApplicationFactory<Program>
     private IHost? _kestrelHost;
 
     public string ServerUrl { get; private set; } = string.Empty;
+    public FakeBggClient Bgg { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting(
             "ConnectionStrings:DesliderClaudeDb",
             $"Data Source={_dbPath};Cache=Shared");
+
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IBggClient>();
+            services.AddSingleton<IBggClient>(Bgg);
+        });
     }
 
     // WebApplicationFactory requires its internal host to use TestServer, but Playwright

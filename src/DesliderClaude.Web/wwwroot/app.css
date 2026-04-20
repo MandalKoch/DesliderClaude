@@ -1448,6 +1448,70 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
 
 .subtle { color: var(--text-muted); }
 
+/* ---------- BGG libraries page ---------- */
+.radio-row {
+    display: flex;
+    gap: var(--s-4);
+    margin-bottom: var(--s-3);
+}
+.radio-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    cursor: pointer;
+    font-family: var(--font-hud);
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.libraries-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-3) 0 0;
+    display: grid;
+    gap: var(--s-3);
+}
+.libraries-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-4);
+    padding: var(--s-3) var(--s-4);
+    background: rgba(15, 23, 51, 0.5);
+    border: 1px solid var(--border-2);
+}
+.libraries-row-main {
+    display: grid;
+    gap: var(--s-1);
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.libraries-row-chip {
+    display: inline-block;
+    font-family: var(--font-hud);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border: 1px solid var(--border-2);
+    color: var(--text-muted);
+    width: max-content;
+}
+.libraries-row-chip.geeklist { color: var(--gold); border-color: var(--gold); }
+.libraries-row-chip.collection { color: var(--cyan); border-color: var(--cyan); }
+.libraries-row-name { font-weight: 600; }
+.libraries-row-meta { color: var(--text-muted); font-size: 0.8125rem; }
+.libraries-row-actions { display: flex; gap: var(--s-2); flex-shrink: 0; }
+
+.text-ok {
+    color: var(--cyan);
+    font-family: var(--font-hud);
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
 /* ---------- empty / loading ---------- */
 .empty {
     font-family: var(--font-hud);

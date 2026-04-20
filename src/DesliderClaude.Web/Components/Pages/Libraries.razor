@@ -1,0 +1,228 @@
+@page "/account/libraries"
+@using System.Text.RegularExpressions
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IBggImportService Imports
+@inject NavigationManager Nav
+@inject ILogger<Libraries> Log
+
+<PageTitle>BGG libraries — DesliderClaude</PageTitle>
+
+<section class="hero">
+    <span class="kicker">Account · BGG</span>
+    <h1 class="hero-title">Your BGG libraries.</h1>
+    <p class="hero-lede">
+        Import a BGG geeklist (by ID or URL) or your owned collection (by username). Each import becomes
+        a pickable source when you host a game night. Refresh re-fetches from BGG; the game cache is
+        otherwise kept forever.
+    </p>
+</section>
+
+<div class="form-card">
+    <form method="post" @formname="bgg-add" @onsubmit="AddAsync">
+        <AntiforgeryToken />
+
+        <label>Source type</label>
+        <div class="radio-row">
+            <label>
+                <input type="radio" name="Form.Kind" value="geeklist"
+                       checked="@(Form?.Kind != "collection")" />
+                <span>Geeklist</span>
+            </label>
+            <label>
+                <input type="radio" name="Form.Kind" value="collection"
+                       checked="@(Form?.Kind == "collection")" />
+                <span>Collection</span>
+            </label>
+        </div>
+
+        <label for="bgg-ref">Geeklist ID / URL — or BGG username</label>
+        <input id="bgg-ref" name="Form.Reference" value="@(Form?.Reference)" maxlength="128"
+               placeholder="e.g. 12345 or https://boardgamegeek.com/geeklist/12345 or yourBggUsername"
+               required />
+
+        <div class="btn-row">
+            <button type="submit" class="btn btn-primary" disabled="@_busy">
+                @(_busy ? "Fetching from BGG…" : "Import →")
+            </button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger">@_error</p>
+    }
+    @if (!string.IsNullOrEmpty(_ok))
+    {
+        <p class="text-ok">@_ok</p>
+    }
+</div>
+
+<section style="margin-top: var(--s-6);">
+    <h2 style="font-family: var(--font-hud); text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.875rem;">
+        Imported (@_items.Count)
+    </h2>
+
+    @if (_items.Count == 0)
+    {
+        <p class="empty">No imports yet. Paste a geeklist link above to get started.</p>
+    }
+    else
+    {
+        <ul class="libraries-list">
+            @foreach (var item in _items)
+            {
+                <li class="libraries-row">
+                    <div class="libraries-row-main">
+                        <span class="libraries-row-chip @(item.SourceType == BggImportSource.GeekList ? "geeklist" : "collection")">
+                            @(item.SourceType == BggImportSource.GeekList ? $"Geeklist #{item.SourceRef}" : $"Collection @{item.SourceRef}")
+                        </span>
+                        <span class="libraries-row-name">@item.Name</span>
+                        <span class="libraries-row-meta">
+                            @item.GameCount games · refreshed @item.LastRefreshedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC
+                        </span>
+                    </div>
+                    <div class="libraries-row-actions">
+                        <form method="post" @formname="@($"bgg-refresh-{item.Id}")" @onsubmit="() => RefreshAsync(item.Id)">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-ghost btn-sm" disabled="@_busy">Refresh</button>
+                        </form>
+                        <form method="post" @formname="@($"bgg-delete-{item.Id}")" @onsubmit="() => DeleteAsync(item.Id)">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-ghost btn-sm" disabled="@_busy">Remove</button>
+                        </form>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+<p style="margin-top: var(--s-5);"><a href="/account">← Back to account</a></p>
+
+@code {
+    private static readonly Regex GeekListUrlPattern = new(
+        @"boardgamegeek\.com/geeklist/(\d+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
+    [SupplyParameterFromForm] public AddFormModel? Form { get; set; }
+
+    private IReadOnlyList<BggImportView> _items = Array.Empty<BggImportView>();
+    private bool _busy;
+    private string? _error;
+    private string? _ok;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uid = await GetUserIdAsync();
+        if (uid is null) return;
+        _items = await Imports.ListForUserAsync(uid.Value);
+    }
+
+    private async Task<Guid?> GetUserIdAsync()
+    {
+        if (AuthState is null) return null;
+        var state = await AuthState;
+        return state.User.GetUserId();
+    }
+
+    private async Task AddAsync()
+    {
+        _error = null;
+        _ok = null;
+        var uid = await GetUserIdAsync();
+        if (uid is null) return;
+
+        var raw = Form?.Reference?.Trim();
+        if (string.IsNullOrEmpty(raw))
+        {
+            _error = "Paste a geeklist ID/URL or a BGG username.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            BggImport import;
+            if (Form?.Kind == "collection")
+            {
+                import = await Imports.ImportCollectionAsync(uid.Value, raw);
+            }
+            else
+            {
+                if (!TryParseGeekListId(raw, out var listId))
+                {
+                    _error = "Couldn't read a geeklist ID from that. Paste either a number or a BGG geeklist URL.";
+                    return;
+                }
+                import = await Imports.ImportGeekListAsync(uid.Value, listId);
+            }
+
+            _ok = $"Imported \"{import.Name}\" ({import.Items.Count} games).";
+            _items = await Imports.ListForUserAsync(uid.Value);
+            Form = null;
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "BGG import failed");
+            _error = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RefreshAsync(Guid importId)
+    {
+        _error = null;
+        _ok = null;
+        var uid = await GetUserIdAsync();
+        if (uid is null) return;
+
+        _busy = true;
+        try
+        {
+            await Imports.RefreshAsync(importId, uid.Value);
+            _ok = "Refreshed.";
+            _items = await Imports.ListForUserAsync(uid.Value);
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "BGG refresh failed");
+            _error = $"Refresh failed: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(Guid importId)
+    {
+        var uid = await GetUserIdAsync();
+        if (uid is null) return;
+        await Imports.DeleteAsync(importId, uid.Value);
+        _items = await Imports.ListForUserAsync(uid.Value);
+        _ok = "Removed.";
+    }
+
+    private static bool TryParseGeekListId(string raw, out int id)
+    {
+        var match = GeekListUrlPattern.Match(raw);
+        if (match.Success)
+        {
+            return int.TryParse(match.Groups[1].Value, out id);
+        }
+        return int.TryParse(raw, out id);
+    }
+
+    public sealed class AddFormModel
+    {
+        public string Kind { get; set; } = "geeklist";
+        public string Reference { get; set; } = string.Empty;
+    }
+}

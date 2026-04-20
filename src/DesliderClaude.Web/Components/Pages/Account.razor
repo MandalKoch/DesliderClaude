@@ -58,6 +58,16 @@ else
     <hr />
 
     <div class="form-card">
+        <h2 style="margin: 0 0 var(--s-3);">BoardGameGeek</h2>
+        <p class="subtle">Import geeklists or your owned collection so hosting a night pulls games from a real library, with cover art and player-count data.</p>
+        <div class="btn-row">
+            <a class="btn btn-ghost" href="/account/libraries">Manage BGG libraries →</a>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="form-card">
         <h2 style="margin: 0 0 var(--s-3);">Sign out</h2>
         <p class="subtle">Clears the session cookie on this device.</p>
         <form method="post" @formname="signout" @onsubmit="SignOutAsync">
