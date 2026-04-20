@@ -29,6 +29,15 @@ public sealed class HostFlowTests : PageTest
     private static int _usernameCounter;
     private static string NewUsername() => $"host{Interlocked.Increment(ref _usernameCounter)}_{Guid.NewGuid():N}"[..24];
 
+    private static async Task AddManualGamesAsync(IPage page, params string[] names)
+    {
+        foreach (var n in names)
+        {
+            await page.GetByLabel("Add a single game").FillAsync(n);
+            await page.Locator("button[name='Form.Action'][value='add-text']").ClickAsync();
+        }
+    }
+
     private async Task RegisterAndSignInAsync(string username, string password = "hunter2-test")
     {
         await Page.GotoAsync("/register");
@@ -61,8 +70,7 @@ public sealed class HostFlowTests : PageTest
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("E2E Test Night");
         await Page.GetByLabel("Target date").FillAsync("2026-05-01");
-        await Page.GetByLabel("Extra games").FillAsync("Catan\nAzul\nWingspan");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+        await AddManualGamesAsync(Page, "Catan", "Azul", "Wingspan");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
 
         await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
@@ -86,8 +94,7 @@ public sealed class HostFlowTests : PageTest
 
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("Stranger Danger");
-        await Page.GetByLabel("Extra games").FillAsync("A\nB");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+        await AddManualGamesAsync(Page, "A", "B");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         var hostUrl = Page.Url;
 
@@ -117,8 +124,7 @@ public sealed class HostFlowTests : PageTest
     {
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync(nightName);
-        await Page.GetByLabel("Extra games").FillAsync(games);
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+        await AddManualGamesAsync(Page, games.Split('\n'));
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         var url = new Uri(Page.Url);
         return url.AbsolutePath.Split('/')[2];
@@ -155,8 +161,7 @@ public sealed class HostFlowTests : PageTest
         await RegisterAndSignInAsync(NewUsername());
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("Auto-Join Night");
-        await Page.GetByLabel("Extra games").FillAsync("A\nB\nC");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+        await AddManualGamesAsync(Page, "A", "B", "C");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         var hostUrl = Page.Url;
         var shareCode = new Uri(hostUrl).AbsolutePath.Split('/')[2];
@@ -215,8 +220,7 @@ public sealed class HostFlowTests : PageTest
 
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("List-Check Night");
-        await Page.GetByLabel("Extra games").FillAsync("A\nB\nC");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+        await AddManualGamesAsync(Page, "A", "B", "C");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
 
         await Page.GotoAsync("/");

@@ -93,26 +93,35 @@ public sealed class BggImportTests : PageTest
         await Page.GetByRole(AriaRole.Button, new() { Name = "Import" }).ClickAsync();
         await Expect(Page.Locator(".libraries-row-name")).ToHaveTextAsync("My Test Geeklist");
 
-        // Go to /create, tick the import, set min-players=5 so only Ticket to Ride (2-5)
-        // and Wingspan (1-5) survive — Catan tops out at 4.
+        // /create is empty. Add the library → 3 rows. Add a manual game → 4 rows.
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("BGG Pick Night");
-        await Page.Locator("input[name='Form.ImportIds'][type='checkbox']").First.CheckAsync();
-        await Page.Locator("input[name='Form.MinPlayers']").FillAsync("5");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
 
-        await Expect(Page.Locator(".candidate-name")).ToHaveCountAsync(2);
-        var names = (await Page.Locator(".candidate-name").AllInnerTextsAsync())
-            .Select(n => n.ToLowerInvariant())
+        await Page.GetByLabel("Add a BGG library").SelectOptionAsync(new SelectOptionValue { Label = "My Test Geeklist — 3 games" });
+        await Page.Locator("button[name='Form.Action'][value='add-import']").ClickAsync();
+        await Expect(Page.Locator(".candidate-row:not([hidden])")).ToHaveCountAsync(3);
+
+        await Page.GetByLabel("Add a single game").FillAsync("Sushi Go");
+        await Page.Locator("button[name='Form.Action'][value='add-text']").ClickAsync();
+        await Expect(Page.Locator(".candidate-row:not([hidden])")).ToHaveCountAsync(4);
+
+        // Filter to min-players=5 — hides Catan (max=4). Manual Sushi Go stays visible.
+        await Page.Locator("input[name='Form.MinPlayers']").FillAsync("5");
+        await Page.Locator("button[name='Form.Action'][value='filter']").ClickAsync();
+
+        await Expect(Page.Locator(".candidate-row:not([hidden])")).ToHaveCountAsync(3);
+        var visible = (await Page.Locator(".candidate-row:not([hidden]) .candidate-name").AllInnerTextsAsync())
+            .Select(n => n.ToLowerInvariant().Trim())
             .ToList();
-        Assert.That(names, Does.Contain("ticket to ride"));
-        Assert.That(names, Does.Contain("wingspan"));
-        Assert.That(names, Does.Not.Contain("catan"));
+        Assert.That(visible.Any(s => s.Contains("ticket to ride")), Is.True);
+        Assert.That(visible.Any(s => s.Contains("wingspan")), Is.True);
+        Assert.That(visible.Any(s => s.Contains("sushi go")), Is.True, "manual game must survive the filter");
+        Assert.That(visible.Any(s => s.Contains("catan")), Is.False);
 
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
         await Expect(Page.GetByText("Ticket to Ride")).ToBeVisibleAsync();
-        await Expect(Page.GetByText("Wingspan")).ToBeVisibleAsync();
+        await Expect(Page.GetByText("Sushi Go")).ToBeVisibleAsync();
     }
 
     [Test]
@@ -128,8 +137,8 @@ public sealed class BggImportTests : PageTest
 
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("Image Test Night");
-        await Page.Locator("input[name='Form.ImportIds'][type='checkbox']").First.CheckAsync();
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+        await Page.GetByLabel("Add a BGG library").SelectOptionAsync(new SelectOptionValue { Label = "My Test Geeklist — 3 games" });
+        await Page.Locator("button[name='Form.Action'][value='add-import']").ClickAsync();
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
 
         await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
