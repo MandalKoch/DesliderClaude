@@ -1,0 +1,50 @@
+@page "/night/{ShareCode}/restore/{Token}"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
+@inject IVotingService Voting
+@inject NavigationManager Nav
+
+<PageTitle>Restore session — DesliderClaude</PageTitle>
+
+@if (_error is not null)
+{
+    <h1>Can't restore this session.</h1>
+    <p class="subtle">@_error</p>
+    <div class="btn-row">
+        <a class="btn" href="/night/@ShareCode">Go to the night →</a>
+        <a class="btn btn-ghost" href="/">← Back home</a>
+    </div>
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [Parameter] public string Token { get; set; } = string.Empty;
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpContext is null) return;
+
+        var night = await GameNights.GetByShareCodeAsync(ShareCode);
+        if (night is null)
+        {
+            _error = "That Game Night link doesn't match anything.";
+            return;
+        }
+
+        var progress = await Voting.GetProgressAsync(Token);
+        if (progress is null || progress.GameNightId != night.Id)
+        {
+            _error = "This restore link is invalid or belongs to a different night.";
+            return;
+        }
+
+        HttpContext.Response.Cookies.Append(VoterCookie.Name(ShareCode), Token, VoterCookie.Options);
+        Nav.NavigateTo(night.IsClosed
+            ? $"/night/{ShareCode}/winner"
+            : $"/night/{ShareCode}/swipe");
+    }
+}

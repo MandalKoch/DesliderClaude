@@ -22,6 +22,21 @@ else if (_voterToken is null)
 }
 else
 {
+    @if (!string.IsNullOrEmpty(_restoreUrl))
+    {
+        <details class="restore-panel">
+            <summary>Bookmark this link to return later</summary>
+            <p class="subtle">Clearing cookies or switching browsers would otherwise lose your votes. This link is your key — keep it private.</p>
+            <input type="text" readonly value="@_restoreUrl" onclick="this.select();" />
+            <div class="btn-row">
+                <button type="button" class="btn btn-ghost btn-sm"
+                        onclick="navigator.clipboard.writeText('@_restoreUrl');this.textContent='Copied ✓';setTimeout(()=>this.textContent='Copy link',1500);">
+                    Copy link
+                </button>
+            </div>
+        </details>
+    }
+
     <div class="ranking-head">
         <div>
             <span class="kicker">My votes</span>
@@ -111,6 +126,7 @@ else
     private VoterProgress? _progress;
     private int _voted;
     private bool _isHost;
+    private string? _restoreUrl;
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,6 +151,11 @@ else
         }
 
         _voted = _progress.Swipes.Count;
+
+        if (_progress.UserId is null && HttpContext is not null)
+        {
+            _restoreUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/night/{ShareCode}/restore/{_voterToken}";
+        }
     }
 
     private async Task SetAsync(Guid gameId, bool yes)

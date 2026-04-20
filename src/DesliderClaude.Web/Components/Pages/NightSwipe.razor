@@ -34,6 +34,21 @@ else if (_currentGame is null)
 else
 {
     <div class="swipe-wrap">
+        @if (!string.IsNullOrEmpty(_restoreUrl))
+        {
+            <details class="restore-panel">
+                <summary>Bookmark this link to return later</summary>
+                <p class="subtle">Clearing cookies or switching browsers would otherwise lose your votes. This link is your key — keep it private.</p>
+                <input type="text" readonly value="@_restoreUrl" onclick="this.select();" />
+                <div class="btn-row">
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            onclick="navigator.clipboard.writeText('@_restoreUrl');this.textContent='Copied ✓';setTimeout(()=>this.textContent='Copy link',1500);">
+                        Copy link
+                    </button>
+                </div>
+            </details>
+        }
+
         <div class="swipe-progress">
             <span class="swipe-progress-label">
                 <strong>@_swipeCount</strong> / @_night.Games.Count voted
@@ -97,6 +112,7 @@ else
     private int _swipeCount;
     private string _progressRatio = "0";
     private bool _isHost;
+    private string? _restoreUrl;
 
     protected override async Task OnInitializedAsync()
     {
@@ -130,6 +146,11 @@ else
 
         _swipeCount = _progress.Swipes.Count;
         _currentGame = await Voting.PickNextGameAsync(_voterToken);
+
+        if (_progress.UserId is null && HttpContext is not null)
+        {
+            _restoreUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/night/{ShareCode}/restore/{_voterToken}";
+        }
 
         // Every candidate already voted → bounce to the votes management page.
         // (Handler also navigates there on the last swipe; this covers returning

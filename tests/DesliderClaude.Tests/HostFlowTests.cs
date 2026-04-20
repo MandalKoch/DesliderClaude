@@ -220,6 +220,40 @@ public sealed class HostFlowTests : PageTest
     }
 
     [Test]
+    public async Task Anonymous_voter_can_restore_session_from_link_in_a_fresh_browser()
+    {
+        // Host creates a night, signs out.
+        await RegisterAndSignInAsync(NewUsername());
+        var shareCode = await CreateNightAsHostAsync("Restore Test", "Alpha\nBeta\nGamma");
+        await Page.GotoAsync("/account");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+
+        // Anonymous join + one swipe.
+        await Page.GotoAsync($"/night/{shareCode}");
+        await Page.GetByLabel("Your callsign").FillAsync("Restorable Ray");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+        await Page.Locator("button[name='Form.Yes'][value='true']").First.ClickAsync();
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        // Grab the restore link from the panel.
+        await Page.GetByText("Bookmark this link to return later").ClickAsync();
+        var restoreUrl = await Page.Locator(".restore-panel input[type='text']").InputValueAsync();
+        Assert.That(restoreUrl, Does.Match($@"^https?://[^/]+/night/{shareCode}/restore/[0-9A-F]+$"));
+
+        // Fresh browser context (= new cookie jar). Visiting the base night URL would
+        // dump them at the callsign form; the restore URL must drop them on /swipe instead.
+        var freshContext = await Browser.NewContextAsync(new() { BaseURL = _app.ServerUrl });
+        var fresh = await freshContext.NewPageAsync();
+        await fresh.GotoAsync(restoreUrl);
+        await Expect(fresh).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{shareCode}/swipe$"));
+
+        // The restored session retains the previous swipe (1/3 voted).
+        await fresh.GotoAsync($"/night/{shareCode}/votes");
+        await Expect(fresh.GetByText("1 / 3 voted")).ToBeVisibleAsync();
+        await freshContext.CloseAsync();
+    }
+
+    [Test]
     public async Task Change_password_accepts_new_credentials_for_next_sign_in()
     {
         var username = NewUsername();

@@ -100,7 +100,7 @@ internal sealed class VotingService : IVotingService
         if (voter is null) return null;
 
         var swipes = voter.Swipes.ToDictionary(s => s.GameId, s => s.Yes);
-        return new VoterProgress(voter.Id, voter.GameNightId, voter.DisplayName, swipes);
+        return new VoterProgress(voter.Id, voter.GameNightId, voter.DisplayName, voter.UserId, swipes);
     }
 
     public async Task<Game?> PickNextGameAsync(string voterToken, Guid? excludeGameId = null, CancellationToken ct = default)

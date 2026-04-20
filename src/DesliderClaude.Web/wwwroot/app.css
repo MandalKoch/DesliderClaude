@@ -1413,6 +1413,30 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
 .notice-danger { border-left-color: var(--crimson); }
 .notice-warn { border-left-color: var(--gold); background: rgba(255, 180, 67, 0.06); }
 
+/* ---------- restore-link panel (anonymous voter's get-back-in link) ---------- */
+.restore-panel {
+    background: rgba(15, 23, 51, 0.5);
+    border: 1px solid var(--border-2);
+    border-left: 3px solid var(--gold);
+    padding: var(--s-3) var(--s-4);
+    margin: 0 0 var(--s-4);
+    font-size: 0.875rem;
+}
+.restore-panel > summary {
+    cursor: pointer;
+    font-family: var(--font-hud);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    list-style: none;
+}
+.restore-panel > summary::-webkit-details-marker { display: none; }
+.restore-panel > summary::before { content: "▸ "; display: inline-block; transition: transform 120ms; }
+.restore-panel[open] > summary::before { transform: rotate(90deg); }
+.restore-panel > *:not(summary) { margin-top: var(--s-3); }
+.restore-panel input[type="text"] { width: 100%; font-family: var(--font-hud); font-size: 0.75rem; }
+
 .text-danger {
     color: var(--crimson);
     font-family: var(--font-hud);
