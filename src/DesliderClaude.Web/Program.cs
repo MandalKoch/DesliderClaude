@@ -11,7 +11,8 @@ builder.AddServiceDefaults();
 
 builder.Services.AddDesliderData(
     builder.Configuration.GetConnectionString("DesliderClaudeDb")
-    ?? throw new InvalidOperationException("Missing connection string 'DesliderClaudeDb'."));
+    ?? throw new InvalidOperationException("Missing connection string 'DesliderClaudeDb'."),
+    builder.Configuration);
 
 builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.Section));
 

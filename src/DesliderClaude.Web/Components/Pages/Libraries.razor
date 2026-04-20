@@ -3,8 +3,10 @@
 @using DesliderClaude.Core.Models
 @using DesliderClaude.Core.Services
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Options
 @attribute [Authorize]
 @inject IBggImportService Imports
+@inject IOptions<BggOptions> BggSettings
 @inject NavigationManager Nav
 @inject ILogger<Libraries> Log
 
@@ -19,6 +21,18 @@
         otherwise kept forever.
     </p>
 </section>
+
+@if (!BggSettings.Value.IsConfigured)
+{
+    <div class="notice notice-closed" style="margin-bottom: var(--s-5);">
+        <p><strong>BGG API token not configured.</strong></p>
+        <p class="subtle">
+            BoardGameGeek locked the XML API behind Bearer auth in late 2025. Imports will 401 until an
+            operator sets <code>Bgg__ApiToken</code> (server env var) to a token from
+            <a href="https://boardgamegeek.com/using_the_xml_api" target="_blank" rel="noopener">boardgamegeek.com/using_the_xml_api</a>.
+        </p>
+    </div>
+}
 
 <div class="form-card">
     <form method="post" @formname="bgg-add" @onsubmit="AddAsync">
