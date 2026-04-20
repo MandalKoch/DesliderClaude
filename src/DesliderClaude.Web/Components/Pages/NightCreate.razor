@@ -1,8 +1,10 @@
 @page "/create"
+@using DesliderClaude.Core.Models
 @using DesliderClaude.Core.Services
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IGameNightService GameNights
+@inject IBggImportService Bgg
 @inject INightNameGenerator NightNames
 @inject NavigationManager Nav
 
@@ -12,15 +14,18 @@
     <span class="kicker">New game night</span>
     <h1 class="hero-title">Set the table.</h1>
     <p class="hero-lede">
-        Name the night, drop in the candidate games, share the link. Friends swipe on their own time —
-        the ranking updates live until you close voting.
+        @(_stage == Stage.Preview
+            ? "Pick the candidates you want on the night. Uncheck anything you're not in the mood for, then create."
+            : "Name the night, pick a BGG library and/or paste candidate games, set any filters, and hit preview.")
     </p>
 </section>
 
 <div class="form-card">
-    <form method="post" @formname="create-night" @onsubmit="CreateAsync">
+    <form method="post" @formname="create-night" @onsubmit="HandleAsync">
         <AntiforgeryToken />
+        <input type="hidden" name="Form.Stage" value="@_stage" />
 
+        @* Always-visible basics — kept around through preview so the user can tweak and re-run. *@
         <label for="night-name">Night name</label>
         <input id="night-name" name="Form.Name" value="@(Form?.Name ?? _defaultName)" maxlength="200"
                placeholder="Friday boardgames" autocomplete="off" required autofocus />
@@ -28,14 +33,121 @@
         <label for="target-date">Target date <span class="subtle">(optional)</span></label>
         <input id="target-date" name="Form.TargetDate" value="@(Form?.TargetDate ?? _defaultDate)" type="date" />
 
-        <label for="games">Candidate games <span class="subtle">(one per line — at least two)</span></label>
-        <textarea id="games" name="Form.Games" rows="8"
-                  placeholder="@GamesPlaceholder"
-                  required>@Form?.Games</textarea>
+        @if (_imports.Count > 0)
+        {
+            <fieldset class="fieldset">
+                <legend>Import from BGG libraries <span class="subtle">(@_imports.Count available)</span></legend>
+                @foreach (var import in _imports)
+                {
+                    var checkedNow = Form?.ImportIds?.Contains(import.Id.ToString()) == true;
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="Form.ImportIds" value="@import.Id" checked="@checkedNow" />
+                        <span>
+                            <strong>@import.Name</strong>
+                            <span class="subtle"> — @import.GameCount games · @(import.SourceType == BggImportSource.GeekList ? $"Geeklist #{import.SourceRef}" : $"@{import.SourceRef}")</span>
+                        </span>
+                    </label>
+                }
+            </fieldset>
+        }
+        else
+        {
+            <p class="subtle" style="margin: var(--s-3) 0;">
+                No BGG libraries yet. <a href="/account/libraries">Import a geeklist →</a>
+            </p>
+        }
 
-        <div class="btn-row">
+        <fieldset class="fieldset">
+            <legend>Filters <span class="subtle">(optional — apply on preview)</span></legend>
+            <div class="filter-grid">
+                <div>
+                    <label for="f-players">Player count <span class="subtle">(min / max)</span></label>
+                    <div class="inline-row">
+                        <input id="f-players" name="Form.MinPlayers" type="number" min="1" max="99" value="@Form?.MinPlayers" placeholder="min" />
+                        <input name="Form.MaxPlayers" type="number" min="1" max="99" value="@Form?.MaxPlayers" placeholder="max" />
+                    </div>
+                </div>
+                <div>
+                    <label for="f-time">Play time min <span class="subtle">(min / max)</span></label>
+                    <div class="inline-row">
+                        <input id="f-time" name="Form.MinPlayTime" type="number" min="0" max="999" value="@Form?.MinPlayTime" placeholder="min" />
+                        <input name="Form.MaxPlayTime" type="number" min="0" max="999" value="@Form?.MaxPlayTime" placeholder="max" />
+                    </div>
+                </div>
+                <div>
+                    <label for="f-rec">Recommended for N players</label>
+                    <input id="f-rec" name="Form.RecommendedFor" type="number" min="1" max="20" value="@Form?.RecommendedFor" placeholder="e.g. 4" />
+                    <p class="subtle" style="font-size: 0.75rem;">Keeps games BGG voters marked as <em>Recommended</em> or <em>Best</em> for this count.</p>
+                </div>
+            </div>
+        </fieldset>
+
+        <label for="games">Extra games <span class="subtle">(optional — one per line, mixed in with BGG picks)</span></label>
+        <textarea id="games" name="Form.Games" rows="4"
+                  placeholder="@GamesPlaceholder">@Form?.Games</textarea>
+
+        @if (_stage == Stage.Preview)
+        {
+            <hr />
+            <h2 style="font-family: var(--font-hud); letter-spacing: 0.12em; text-transform: uppercase; font-size: 1rem; margin-top: var(--s-5);">
+                Candidates (@_previewSelectedCount / @_previewCandidates.Count)
+            </h2>
+            <p class="subtle">Uncheck anything you want to drop. Free-text entries are always included.</p>
+
+            @if (_previewCandidates.Count == 0)
+            {
+                <p class="empty">No games survived the filters. Loosen them or add some free-text games above.</p>
+            }
+            else
+            {
+                <ul class="candidate-list">
+                    @for (var i = 0; i < _previewCandidates.Count; i++)
+                    {
+                        var cand = _previewCandidates[i];
+                        var isSelected = _previewSelected[i];
+                        <li class="candidate-row @(isSelected ? "is-selected" : "is-unselected")">
+                            <label class="checkbox-row">
+                                <input type="checkbox" name="Form.SelectedPreviewIndexes" value="@i" checked="@isSelected" />
+                                <span class="candidate-main">
+                                    <span class="candidate-name">@cand.Name</span>
+                                    <span class="candidate-meta">
+                                        @if (cand.MinPlayers is not null || cand.MaxPlayers is not null)
+                                        {
+                                            <span>@(FormatRange(cand.MinPlayers, cand.MaxPlayers)) players</span>
+                                        }
+                                        @if (cand.MinPlayTimeMinutes is not null || cand.MaxPlayTimeMinutes is not null)
+                                        {
+                                            <span>· @(FormatRange(cand.MinPlayTimeMinutes, cand.MaxPlayTimeMinutes)) min</span>
+                                        }
+                                        @if (cand.Recommended.Count > 0)
+                                        {
+                                            <span>· recommended @string.Join(", ", cand.Recommended)</span>
+                                        }
+                                    </span>
+                                </span>
+                            </label>
+                            @* Carry candidate metadata into the next POST as hidden fields, indexed by position. *@
+                            <input type="hidden" name="Form.PreviewIds" value="@cand.BggGameId" />
+                            <input type="hidden" name="Form.PreviewNames" value="@cand.Name" />
+                            <input type="hidden" name="Form.PreviewImages" value="@(cand.ImageUrl ?? string.Empty)" />
+                            <input type="hidden" name="Form.PreviewThumbs" value="@(cand.ThumbnailUrl ?? string.Empty)" />
+                        </li>
+                    }
+                </ul>
+            }
+        }
+
+        <div class="btn-row" style="margin-top: var(--s-5);">
             <a class="btn btn-ghost" href="/">← Cancel</a>
-            <button type="submit" class="btn btn-primary">Create night →</button>
+            @if (_stage == Stage.Preview)
+            {
+                <button type="submit" class="btn btn-ghost" name="Form.Action" value="back">← Back to filters</button>
+                <button type="submit" class="btn btn-primary" name="Form.Action" value="create">Create night →</button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-primary" name="Form.Action" value="preview">Preview games →</button>
+            }
         </div>
     </form>
 
@@ -46,26 +158,141 @@
 </div>
 
 @code {
+    private const string GamesPlaceholder = "Catan\nAzul\nWingspan\nTerraforming Mars";
+
+    public enum Stage { Input, Preview }
+
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
     [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromForm] public CreateFormModel? Form { get; set; }
 
+    private IReadOnlyList<BggImportView> _imports = Array.Empty<BggImportView>();
+    private IReadOnlyList<PreviewCandidate> _previewCandidates = Array.Empty<PreviewCandidate>();
+    private bool[] _previewSelected = Array.Empty<bool>();
+    private int _previewSelectedCount;
+    private Stage _stage = Stage.Input;
     private string? _error;
     private string _defaultName = string.Empty;
     private string _defaultDate = string.Empty;
 
-    private const string GamesPlaceholder = "Catan\nAzul\nWingspan\nTerraforming Mars";
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         _defaultName = NightNames.Generate();
         _defaultDate = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+
+        var uid = await GetUserIdAsync();
+        if (uid is not null)
+        {
+            _imports = await Bgg.ListForUserAsync(uid.Value);
+        }
+
+        if (Form?.Stage == Stage.Preview && Form.Action == "back")
+        {
+            // Explicit "back to filters" click — go back to input stage but keep Form values.
+            _stage = Stage.Input;
+            return;
+        }
+
+        if (Form?.Stage == Stage.Preview)
+        {
+            // Either we're re-showing preview after a failed "create" POST, or this is a fresh
+            // preview POST. Either way, we rebuild from the hidden carry-over fields.
+            _stage = Stage.Preview;
+            RehydratePreviewFromForm();
+        }
     }
 
-    private async Task CreateAsync()
+    private async Task HandleAsync()
     {
-        if (HttpContext is null) return;
+        _error = null;
+        var uid = await GetUserIdAsync();
+        if (uid is null) return;
 
+        if (Form?.Action == "preview")
+        {
+            await BuildPreviewAsync(uid.Value);
+            _stage = Stage.Preview;
+            return;
+        }
+
+        if (Form?.Action == "back")
+        {
+            _stage = Stage.Input;
+            return;
+        }
+
+        if (Form?.Action == "create" && Form.Stage == Stage.Preview)
+        {
+            await CreateAsync(uid.Value);
+        }
+    }
+
+    private async Task BuildPreviewAsync(Guid userId)
+    {
+        var importIds = (Form?.ImportIds ?? Array.Empty<string>())
+            .Select(s => Guid.TryParse(s, out var g) ? g : Guid.Empty)
+            .Where(g => g != Guid.Empty)
+            .ToList();
+
+        var bggCandidates = await Bgg.ListCandidatesAsync(userId, importIds);
+        var filtered = bggCandidates.Where(Passes).ToList();
+
+        var free = ParseFreeTextGames();
+
+        var all = filtered
+            .Select(c => new PreviewCandidate(
+                c.BggGameId,
+                c.Name,
+                c.ImageUrl,
+                c.ThumbnailUrl,
+                c.MinPlayers,
+                c.MaxPlayers,
+                c.MinPlayTimeMinutes,
+                c.MaxPlayTimeMinutes,
+                c.RecommendedPlayerCounts.Select(v => v.Count).Distinct().OrderBy(n => n).ToList()))
+            .Concat(free.Select(n => new PreviewCandidate(0, n, null, null, null, null, null, null, Array.Empty<int>())))
+            .GroupBy(c => c.BggGameId == 0 ? c.Name : c.BggGameId.ToString())
+            .Select(g => g.First())
+            .ToList();
+
+        _previewCandidates = all;
+        _previewSelected = new bool[all.Count];
+        for (var i = 0; i < all.Count; i++) _previewSelected[i] = true;
+        _previewSelectedCount = all.Count;
+    }
+
+    private void RehydratePreviewFromForm()
+    {
+        var ids = Form?.PreviewIds ?? Array.Empty<string>();
+        var names = Form?.PreviewNames ?? Array.Empty<string>();
+        var images = Form?.PreviewImages ?? Array.Empty<string>();
+        var thumbs = Form?.PreviewThumbs ?? Array.Empty<string>();
+        var selected = (Form?.SelectedPreviewIndexes ?? Array.Empty<string>())
+            .Select(s => int.TryParse(s, out var i) ? i : -1)
+            .Where(i => i >= 0)
+            .ToHashSet();
+
+        var n = Math.Min(Math.Min(ids.Length, names.Length), Math.Min(images.Length, thumbs.Length));
+        var list = new List<PreviewCandidate>(n);
+        var flags = new bool[n];
+        for (var i = 0; i < n; i++)
+        {
+            var bggId = int.TryParse(ids[i], out var gid) ? gid : 0;
+            list.Add(new PreviewCandidate(
+                bggId, names[i],
+                string.IsNullOrEmpty(images[i]) ? null : images[i],
+                string.IsNullOrEmpty(thumbs[i]) ? null : thumbs[i],
+                null, null, null, null, Array.Empty<int>()));
+            flags[i] = selected.Contains(i);
+        }
+
+        _previewCandidates = list;
+        _previewSelected = flags;
+        _previewSelectedCount = flags.Count(b => b);
+    }
+
+    private async Task CreateAsync(Guid userId)
+    {
         var name = Form?.Name?.Trim();
         if (string.IsNullOrEmpty(name))
         {
@@ -73,14 +300,27 @@
             return;
         }
 
-        var games = (Form?.Games ?? string.Empty)
-            .Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        var chosen = new List<GameCandidate>();
+        for (var i = 0; i < _previewCandidates.Count; i++)
+        {
+            if (!_previewSelected[i]) continue;
+            var c = _previewCandidates[i];
+            chosen.Add(new GameCandidate(
+                c.Name,
+                c.BggGameId == 0 ? null : c.BggGameId,
+                c.ImageUrl,
+                c.ThumbnailUrl));
+        }
+
+        // Dedupe by name (case-insensitive) — preview already deduped by BGG id.
+        chosen = chosen
+            .GroupBy(c => c.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
             .ToList();
 
-        if (games.Count < 2)
+        if (chosen.Count < 2)
         {
-            _error = "Add at least two candidate games — otherwise there's nothing to swipe.";
+            _error = "Pick at least two candidate games — otherwise there's nothing to swipe.";
             return;
         }
 
@@ -91,21 +331,102 @@
             targetDate = parsed;
         }
 
-        Guid? userId = null;
-        if (AuthState is not null)
-        {
-            var state = await AuthState;
-            userId = state.User.GetUserId();
-        }
-
-        var night = await GameNights.CreateAsync(name, targetDate, games, userId);
+        var night = await GameNights.CreateAsync(name, targetDate, chosen, userId);
         Nav.NavigateTo($"/night/{night.ShareCode}/host");
     }
+
+    private bool Passes(BggCandidateGame c)
+    {
+        if (Form is null) return true;
+
+        if (int.TryParse(Form.MinPlayers, out var minP) && minP > 0)
+        {
+            // Game must support at least this many players — its MaxPlayers >= minP.
+            if (c.MaxPlayers is null || c.MaxPlayers < minP) return false;
+        }
+
+        if (int.TryParse(Form.MaxPlayers, out var maxP) && maxP > 0)
+        {
+            // Game must not require more than this — its MinPlayers <= maxP.
+            if (c.MinPlayers is null || c.MinPlayers > maxP) return false;
+        }
+
+        if (int.TryParse(Form.MinPlayTime, out var minT) && minT > 0)
+        {
+            if (c.MaxPlayTimeMinutes is null || c.MaxPlayTimeMinutes < minT) return false;
+        }
+
+        if (int.TryParse(Form.MaxPlayTime, out var maxT) && maxT > 0)
+        {
+            if (c.MinPlayTimeMinutes is null || c.MinPlayTimeMinutes > maxT) return false;
+        }
+
+        if (int.TryParse(Form.RecommendedFor, out var recFor) && recFor > 0)
+        {
+            var hit = c.RecommendedPlayerCounts.FirstOrDefault(v => v.Count == recFor);
+            if (hit is null || hit.Kind == BggPlayerCountKind.NotRecommended) return false;
+        }
+
+        return true;
+    }
+
+    private List<string> ParseFreeTextGames()
+    {
+        return (Form?.Games ?? string.Empty)
+            .Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task<Guid?> GetUserIdAsync()
+    {
+        if (AuthState is null) return null;
+        var state = await AuthState;
+        return state.User.GetUserId();
+    }
+
+    private static string FormatRange(int? min, int? max)
+    {
+        if (min is null && max is null) return "?";
+        if (min == max) return min!.Value.ToString();
+        if (min is null) return $"≤{max}";
+        if (max is null) return $"≥{min}";
+        return $"{min}–{max}";
+    }
+
+    public sealed record PreviewCandidate(
+        int BggGameId,
+        string Name,
+        string? ImageUrl,
+        string? ThumbnailUrl,
+        int? MinPlayers,
+        int? MaxPlayers,
+        int? MinPlayTimeMinutes,
+        int? MaxPlayTimeMinutes,
+        IReadOnlyList<int> Recommended);
 
     public sealed class CreateFormModel
     {
         public string Name { get; set; } = string.Empty;
         public string TargetDate { get; set; } = string.Empty;
         public string Games { get; set; } = string.Empty;
+
+        public string[]? ImportIds { get; set; }
+
+        public string MinPlayers { get; set; } = string.Empty;
+        public string MaxPlayers { get; set; } = string.Empty;
+        public string MinPlayTime { get; set; } = string.Empty;
+        public string MaxPlayTime { get; set; } = string.Empty;
+        public string RecommendedFor { get; set; } = string.Empty;
+
+        public Stage Stage { get; set; } = Stage.Input;
+        public string Action { get; set; } = string.Empty;
+
+        // Carried through the preview POST — parallel arrays indexed by position.
+        public string[]? PreviewIds { get; set; }
+        public string[]? PreviewNames { get; set; }
+        public string[]? PreviewImages { get; set; }
+        public string[]? PreviewThumbs { get; set; }
+        public string[]? SelectedPreviewIndexes { get; set; }
     }
 }

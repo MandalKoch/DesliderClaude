@@ -24,7 +24,7 @@ internal sealed partial class GameNightService : IGameNightService
     public async Task<GameNight> CreateAsync(
         string name,
         DateOnly? targetDate,
-        IEnumerable<string> gameNames,
+        IReadOnlyList<GameCandidate> candidates,
         Guid? createdByUserId = null,
         CancellationToken ct = default)
     {
@@ -36,7 +36,13 @@ internal sealed partial class GameNightService : IGameNightService
             TargetDate = targetDate,
             ShareCode = shareCode,
             CreatedByUserId = createdByUserId,
-            Games = gameNames.Select(n => new Game { Name = n }).ToList()
+            Games = candidates.Select(c => new Game
+            {
+                Name = c.Name,
+                BggGameId = c.BggGameId,
+                ImageUrl = c.ImageUrl,
+                ThumbnailUrl = c.ThumbnailUrl,
+            }).ToList()
         };
 
         _db.GameNights.Add(night);

@@ -13,4 +13,11 @@ public interface IBggImportService
 
     Task<IReadOnlyList<BggImportView>> ListForUserAsync(Guid userId, CancellationToken ct = default);
     Task DeleteAsync(Guid importId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>Union of games from the user's selected imports, deduplicated by
+    /// BggGameId. Used by the /create flow to present a filterable candidate set.</summary>
+    Task<IReadOnlyList<BggCandidateGame>> ListCandidatesAsync(
+        Guid userId,
+        IReadOnlyList<Guid> importIds,
+        CancellationToken ct = default);
 }

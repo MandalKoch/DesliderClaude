@@ -118,6 +118,75 @@ internal sealed class BggImportService : IBggImportService
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<BggCandidateGame>> ListCandidatesAsync(
+        Guid userId,
+        IReadOnlyList<Guid> importIds,
+        CancellationToken ct = default)
+    {
+        if (importIds.Count == 0) return Array.Empty<BggCandidateGame>();
+
+        // Only consider imports the caller actually owns.
+        var ownedIds = await _db.BggImports
+            .Where(i => i.UserId == userId && importIds.Contains(i.Id))
+            .Select(i => i.Id)
+            .ToListAsync(ct);
+
+        if (ownedIds.Count == 0) return Array.Empty<BggCandidateGame>();
+
+        // Distinct BggGame IDs referenced by those imports → hydrate from cache.
+        var gameIds = await _db.BggImportItems
+            .Where(x => ownedIds.Contains(x.BggImportId))
+            .Select(x => x.BggGameId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (gameIds.Count == 0) return Array.Empty<BggCandidateGame>();
+
+        var rows = await _db.BggGames
+            .Where(g => gameIds.Contains(g.BggGameId))
+            .Select(g => new
+            {
+                g.BggGameId,
+                g.Name,
+                g.ImageUrl,
+                g.ThumbnailUrl,
+                g.MinPlayers,
+                g.MaxPlayers,
+                g.MinPlayTimeMinutes,
+                g.MaxPlayTimeMinutes,
+                g.RecommendedPlayerCountsJson,
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new BggCandidateGame(
+                r.BggGameId,
+                r.Name,
+                r.ImageUrl,
+                r.ThumbnailUrl,
+                r.MinPlayers,
+                r.MaxPlayers,
+                r.MinPlayTimeMinutes,
+                r.MaxPlayTimeMinutes,
+                ParseRecommended(r.RecommendedPlayerCountsJson)))
+            .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IReadOnlyList<BggPlayerCountVote> ParseRecommended(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return Array.Empty<BggPlayerCountVote>();
+        try
+        {
+            return JsonSerializer.Deserialize<IReadOnlyList<BggPlayerCountVote>>(json, Json)
+                ?? Array.Empty<BggPlayerCountVote>();
+        }
+        catch (JsonException)
+        {
+            return Array.Empty<BggPlayerCountVote>();
+        }
+    }
+
     /// <summary>Core upsert: fetches/refreshes BggGame rows for <paramref name="gameIds"/>,
     /// replaces the import's items list, and bumps LastRefreshedAt.</summary>
     private async Task ReplaceItemsAsync(BggImport import, IReadOnlyList<int> gameIds, string displayName, CancellationToken ct)

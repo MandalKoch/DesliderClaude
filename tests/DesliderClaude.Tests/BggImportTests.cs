@@ -84,6 +84,38 @@ public sealed class BggImportTests : PageTest
     }
 
     [Test]
+    public async Task Create_night_from_imported_geeklist_with_player_filter()
+    {
+        await RegisterAndSignInAsync(NewUsername());
+
+        await Page.GotoAsync("/account/libraries");
+        await Page.GetByLabel("Geeklist ID / URL — or BGG username").FillAsync("4242");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Import" }).ClickAsync();
+        await Expect(Page.Locator(".libraries-row-name")).ToHaveTextAsync("My Test Geeklist");
+
+        // Go to /create, tick the import, set min-players=5 so only Ticket to Ride (2-5)
+        // and Wingspan (1-5) survive — Catan tops out at 4.
+        await Page.GotoAsync("/create");
+        await Page.GetByLabel("Night name").FillAsync("BGG Pick Night");
+        await Page.Locator("input[name='Form.ImportIds'][type='checkbox']").First.CheckAsync();
+        await Page.Locator("input[name='Form.MinPlayers']").FillAsync("5");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+
+        await Expect(Page.Locator(".candidate-name")).ToHaveCountAsync(2);
+        var names = (await Page.Locator(".candidate-name").AllInnerTextsAsync())
+            .Select(n => n.ToLowerInvariant())
+            .ToList();
+        Assert.That(names, Does.Contain("ticket to ride"));
+        Assert.That(names, Does.Contain("wingspan"));
+        Assert.That(names, Does.Not.Contain("catan"));
+
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
+        await Expect(Page.GetByText("Ticket to Ride")).ToBeVisibleAsync();
+        await Expect(Page.GetByText("Wingspan")).ToBeVisibleAsync();
+    }
+
+    [Test]
     public async Task Remove_button_deletes_the_import_from_the_list()
     {
         await RegisterAndSignInAsync(NewUsername());

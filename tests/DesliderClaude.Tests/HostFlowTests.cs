@@ -61,7 +61,8 @@ public sealed class HostFlowTests : PageTest
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("E2E Test Night");
         await Page.GetByLabel("Target date").FillAsync("2026-05-01");
-        await Page.GetByLabel("Candidate games").FillAsync("Catan\nAzul\nWingspan");
+        await Page.GetByLabel("Extra games").FillAsync("Catan\nAzul\nWingspan");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
 
         await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
@@ -85,7 +86,8 @@ public sealed class HostFlowTests : PageTest
 
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("Stranger Danger");
-        await Page.GetByLabel("Candidate games").FillAsync("A\nB");
+        await Page.GetByLabel("Extra games").FillAsync("A\nB");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         var hostUrl = Page.Url;
 
@@ -115,7 +117,8 @@ public sealed class HostFlowTests : PageTest
     {
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync(nightName);
-        await Page.GetByLabel("Candidate games").FillAsync(games);
+        await Page.GetByLabel("Extra games").FillAsync(games);
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         var url = new Uri(Page.Url);
         return url.AbsolutePath.Split('/')[2];
@@ -152,7 +155,8 @@ public sealed class HostFlowTests : PageTest
         await RegisterAndSignInAsync(NewUsername());
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("Auto-Join Night");
-        await Page.GetByLabel("Candidate games").FillAsync("A\nB\nC");
+        await Page.GetByLabel("Extra games").FillAsync("A\nB\nC");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         var hostUrl = Page.Url;
         var shareCode = new Uri(hostUrl).AbsolutePath.Split('/')[2];
@@ -211,7 +215,8 @@ public sealed class HostFlowTests : PageTest
 
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("List-Check Night");
-        await Page.GetByLabel("Candidate games").FillAsync("A\nB\nC");
+        await Page.GetByLabel("Extra games").FillAsync("A\nB\nC");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
 
         await Page.GotoAsync("/");

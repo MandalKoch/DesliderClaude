@@ -10,6 +10,13 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
     {
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.ImageUrl).HasMaxLength(512);
+        builder.Property(x => x.ThumbnailUrl).HasMaxLength(512);
+
+        builder.HasOne(x => x.BggGame)
+            .WithMany()
+            .HasForeignKey(x => x.BggGameId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(x => x.Swipes)
             .WithOne(s => s.Game)

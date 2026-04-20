@@ -7,7 +7,7 @@ public interface IGameNightService
     Task<GameNight> CreateAsync(
         string name,
         DateOnly? targetDate,
-        IEnumerable<string> gameNames,
+        IReadOnlyList<GameCandidate> candidates,
         Guid? createdByUserId = null,
         CancellationToken ct = default);
 
