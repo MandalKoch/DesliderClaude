@@ -59,8 +59,15 @@ else
         </div>
 
         <div class="swipe-stage">
-            <article class="swipe-card" data-swipe-card>
+            <article class="swipe-card @(string.IsNullOrEmpty(_currentGame.ImageUrl) ? "swipe-card-noart" : "swipe-card-withart")" data-swipe-card>
                 <div class="swipe-card-corners"></div>
+                @if (!string.IsNullOrEmpty(_currentGame.ImageUrl))
+                {
+                    @* Hotlinked from BGG's CDN. Referrer stripped so BGG doesn't see a per-user signal.
+                       Decorative — accessible name comes from the title below. *@
+                    <img class="swipe-card-art" src="@_currentGame.ImageUrl" alt=""
+                         referrerpolicy="no-referrer" loading="eager" decoding="async" />
+                }
                 <div class="swipe-card-label">candidate</div>
                 <h1 class="swipe-card-title">@_currentGame.Name</h1>
                 <div class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true">

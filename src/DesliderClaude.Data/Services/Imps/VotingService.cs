@@ -79,6 +79,8 @@ internal sealed class VotingService : IVotingService
             {
                 g.Id,
                 g.Name,
+                g.ImageUrl,
+                g.ThumbnailUrl,
                 YesCount = g.Swipes.Count(s => s.Yes),
                 NoCount = g.Swipes.Count(s => !s.Yes)
             })
@@ -86,7 +88,7 @@ internal sealed class VotingService : IVotingService
             .ThenBy(r => r.Name)
             .ToListAsync(ct);
 
-        return rows.Select(r => new GameRanking(r.Id, r.Name, r.YesCount, r.NoCount)).ToList();
+        return rows.Select(r => new GameRanking(r.Id, r.Name, r.YesCount, r.NoCount, r.ImageUrl, r.ThumbnailUrl)).ToList();
     }
 
     public Task<int> GetVoterCountAsync(Guid gameNightId, CancellationToken ct = default)

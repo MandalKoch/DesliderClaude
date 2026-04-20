@@ -60,6 +60,10 @@ else
             var hasVote = voteValue is not null;
             var yes = voteValue == true;
             <li class="votes-row @(hasVote ? (yes ? "is-yes" : "is-no") : "is-unvoted")">
+                @if (!string.IsNullOrEmpty(game.ThumbnailUrl))
+                {
+                    <img class="votes-row-thumb" src="@game.ThumbnailUrl" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" />
+                }
                 <div class="votes-row-main">
                     <span class="votes-row-name">@game.Name</span>
                     <span class="votes-row-status">

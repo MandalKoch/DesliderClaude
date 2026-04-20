@@ -116,6 +116,44 @@ public sealed class BggImportTests : PageTest
     }
 
     [Test]
+    public async Task Swipe_card_renders_bgg_image_for_imported_game()
+    {
+        await RegisterAndSignInAsync(NewUsername());
+
+        // Import geeklist, create night with all three games (no filter).
+        await Page.GotoAsync("/account/libraries");
+        await Page.GetByLabel("Geeklist ID / URL — or BGG username").FillAsync("4242");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Import" }).ClickAsync();
+        await Expect(Page.Locator(".libraries-row-name")).ToHaveTextAsync("My Test Geeklist");
+
+        await Page.GotoAsync("/create");
+        await Page.GetByLabel("Night name").FillAsync("Image Test Night");
+        await Page.Locator("input[name='Form.ImportIds'][type='checkbox']").First.CheckAsync();
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Preview games" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
+        var shareCode = new Uri(Page.Url).AbsolutePath.Split('/')[2];
+
+        // Sign out, anonymous join, land on swipe.
+        await Page.GotoAsync("/account");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+        await Page.GotoAsync($"/night/{shareCode}");
+        await Page.GetByLabel("Your callsign").FillAsync("Pixel Pat");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+
+        // Catan is the only one we seeded with an image. Cycle through cards until we land on it.
+        // (PickNextGameAsync is deterministic unvoted-only, but order within that set isn't.)
+        var catanArt = Page.Locator(".swipe-card-art[src='img/catan.jpg']");
+        for (var i = 0; i < 3 && await catanArt.CountAsync() == 0; i++)
+        {
+            await Page.Locator("button[name='Form.Yes'][value='false']").First.ClickAsync();
+            await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        }
+        await Expect(catanArt).ToBeVisibleAsync();
+    }
+
+    [Test]
     public async Task Remove_button_deletes_the_import_from_the_list()
     {
         await RegisterAndSignInAsync(NewUsername());

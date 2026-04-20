@@ -48,7 +48,11 @@ else
         }
     </div>
 
-    <section class="winner-hero">
+    <section class="winner-hero @(string.IsNullOrEmpty(winner.ImageUrl) ? "" : "winner-hero-withart")">
+        @if (!string.IsNullOrEmpty(winner.ImageUrl))
+        {
+            <img class="winner-hero-art" src="@winner.ImageUrl" alt="" referrerpolicy="no-referrer" decoding="async" />
+        }
         <span class="winner-hero-label">Tonight's pick</span>
         <h2 class="winner-hero-name">@winner.Name</h2>
         <div class="winner-hero-votes">
@@ -68,6 +72,10 @@ else
             @foreach (var row in runnersUp)
             {
                 <li>
+                    @if (!string.IsNullOrEmpty(row.ThumbnailUrl))
+                    {
+                        <img class="ranking-thumb" src="@row.ThumbnailUrl" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" />
+                    }
                     <span class="ranking-name">@row.Name</span>
                     <span class="ranking-votes">
                         <span class="yes">+@row.YesCount</span>

@@ -1,3 +1,9 @@
 namespace DesliderClaude.Core.Models;
 
-public sealed record GameRanking(Guid GameId, string Name, int YesCount, int NoCount);
+public sealed record GameRanking(
+    Guid GameId,
+    string Name,
+    int YesCount,
+    int NoCount,
+    string? ImageUrl = null,
+    string? ThumbnailUrl = null);
