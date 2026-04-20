@@ -19,8 +19,21 @@ internal static class AuthExtensions
         return http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
     }
 
-    public static Task SignOutUserAsync(this HttpContext http)
-        => http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    public static async Task SignOutUserAsync(this HttpContext http)
+    {
+        await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        // Sign-out wipes every deslider-* cookie, not just the auth one — the voter
+        // tokens (deslider-voter-{shareCode}) are per-night login credentials too.
+        var delete = new CookieOptions { Path = "/" };
+        foreach (var name in http.Request.Cookies.Keys)
+        {
+            if (name.StartsWith("deslider-", StringComparison.Ordinal))
+            {
+                http.Response.Cookies.Delete(name, delete);
+            }
+        }
+    }
 
     public static Guid? GetUserId(this ClaimsPrincipal? principal)
     {
