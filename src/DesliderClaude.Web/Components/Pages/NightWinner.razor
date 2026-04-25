@@ -86,6 +86,25 @@ else
         </ol>
     }
 
+    @if (_voters.Count > 0)
+    {
+        var totalGames = _night.Games.Count;
+        <h3 class="winner-runners-head">Who's voting</h3>
+        <ul class="voter-list voter-list-public">
+            @foreach (var v in _voters)
+            {
+                var pct = totalGames == 0 ? 0 : (int)Math.Round(100.0 * v.SwipesCast / totalGames);
+                <li class="voter-row @(v.SwipesCast == 0 ? "voter-pending" : null)">
+                    <div class="voter-meta">
+                        <span class="voter-name">@v.DisplayName</span>
+                        <span class="voter-progress-text">@v.SwipesCast / @totalGames</span>
+                    </div>
+                    <progress class="voter-progress" max="@totalGames" value="@v.SwipesCast" aria-label="@pct%"></progress>
+                </li>
+            }
+        </ul>
+    }
+
     <div class="btn-row">
         @if (!_night.IsClosed)
         {
@@ -105,6 +124,7 @@ else
 
     private GameNight? _night;
     private IReadOnlyList<GameRanking> _ranking = Array.Empty<GameRanking>();
+    private IReadOnlyList<VoterPublicStatus> _voters = Array.Empty<VoterPublicStatus>();
     private bool _isHost;
 
     protected override async Task OnInitializedAsync()
@@ -122,5 +142,6 @@ else
         _ranking = await Voting.GetRankingAsync(_night.Id);
         // Only show a "winner" when there are actual yes votes — otherwise fall back to runner-up list display.
         _ranking = _ranking.Where(r => r.YesCount + r.NoCount > 0).ToList();
+        _voters = await Voting.ListPublicVoterStatusesAsync(_night.Id);
     }
 }

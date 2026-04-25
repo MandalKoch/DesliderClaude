@@ -8,6 +8,7 @@ public sealed record BggCollectionFetch(string Username, IReadOnlyList<int> Game
 
 public sealed record BggThingFetch(
     int BggGameId,
+    string Type,
     string Name,
     string? ImageUrl,
     string? ThumbnailUrl,

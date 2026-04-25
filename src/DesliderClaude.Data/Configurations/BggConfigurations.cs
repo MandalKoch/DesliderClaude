@@ -10,6 +10,7 @@ internal sealed class BggGameConfiguration : IEntityTypeConfiguration<BggGame>
     {
         b.HasKey(g => g.BggGameId);
         b.Property(g => g.BggGameId).ValueGeneratedNever();
+        b.Property(g => g.Type).HasMaxLength(32);
         b.Property(g => g.Name).HasMaxLength(256).IsRequired();
         b.Property(g => g.ImageUrl).HasMaxLength(512);
         b.Property(g => g.ThumbnailUrl).HasMaxLength(512);

@@ -8,8 +8,8 @@ namespace DesliderClaude.Data.Services.Imps;
 
 /// <summary>BGG XML API v2 client. Handles the three quirks we care about:
 /// (1) collection endpoint returns HTTP 202 while the result is queued — we
-/// retry with a short delay; (2) /thing accepts comma-separated IDs so one
-/// call fetches a whole geeklist; (3) the suggested_numplayers poll is
+/// retry with a short delay; (2) /thing caps each request at 20 IDs, so we
+/// chunk and concatenate; (3) the suggested_numplayers poll is
 /// nested <c>&lt;results numplayers="N"&gt;</c> with three child <c>&lt;result&gt;</c>s —
 /// we translate the tallies into <see cref="BggPlayerCountKind"/> using the
 /// standard "Best+Recommended &gt; Not Recommended" rule.</summary>
@@ -17,6 +17,7 @@ internal sealed class BggClient : IBggClient
 {
     private static readonly TimeSpan CollectionRetryDelay = TimeSpan.FromSeconds(2);
     private const int CollectionRetryLimit = 5;
+    private const int ThingBatchSize = 20;
 
     private readonly HttpClient _http;
 
@@ -25,7 +26,7 @@ internal sealed class BggClient : IBggClient
     public async Task<BggGeekListFetch> FetchGeekListAsync(int geekListId, CancellationToken ct = default)
     {
         using var resp = await _http.GetAsync($"geeklist/{geekListId}", ct);
-        resp.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(resp, ct);
 
         var doc = XDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
         var root = doc.Root ?? throw new InvalidOperationException("Empty geeklist response.");
@@ -52,7 +53,7 @@ internal sealed class BggClient : IBggClient
                 await Task.Delay(CollectionRetryDelay, ct);
                 continue;
             }
-            resp.EnsureSuccessStatusCode();
+            await EnsureSuccessAsync(resp, ct);
 
             var doc = XDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
             var root = doc.Root ?? throw new InvalidOperationException("Empty collection response.");
@@ -73,35 +74,50 @@ internal sealed class BggClient : IBggClient
     {
         if (bggGameIds.Count == 0) return Array.Empty<BggThingFetch>();
 
-        var ids = string.Join(',', bggGameIds.Distinct());
-        using var resp = await _http.GetAsync($"thing?id={ids}&stats=1", ct);
-        resp.EnsureSuccessStatusCode();
-
-        var doc = XDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
-        var root = doc.Root ?? throw new InvalidOperationException("Empty thing response.");
-
         var things = new List<BggThingFetch>();
-        foreach (var item in root.Elements("item"))
+        foreach (var batch in bggGameIds.Distinct().Chunk(ThingBatchSize))
         {
-            if (!int.TryParse((string?)item.Attribute("id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) || id <= 0)
-                continue;
+            var ids = string.Join(',', batch);
+            using var resp = await _http.GetAsync($"thing?id={ids}&stats=1", ct);
+            await EnsureSuccessAsync(resp, ct);
 
-            var primary = item.Elements("name").FirstOrDefault(n => (string?)n.Attribute("type") == "primary");
-            var name = (string?)primary?.Attribute("value") ?? (string?)item.Element("name")?.Attribute("value") ?? $"BGG {id}";
+            var doc = XDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            var root = doc.Root ?? throw new InvalidOperationException("Empty thing response.");
 
-            things.Add(new BggThingFetch(
-                BggGameId: id,
-                Name: name,
-                ImageUrl: (string?)item.Element("image"),
-                ThumbnailUrl: (string?)item.Element("thumbnail"),
-                MinPlayers: TryReadValue(item.Element("minplayers")),
-                MaxPlayers: TryReadValue(item.Element("maxplayers")),
-                MinPlayTimeMinutes: TryReadValue(item.Element("minplaytime")),
-                MaxPlayTimeMinutes: TryReadValue(item.Element("maxplaytime")),
-                RecommendedPlayerCounts: ParsePlayerCountPoll(item)));
+            foreach (var item in root.Elements("item"))
+            {
+                if (!int.TryParse((string?)item.Attribute("id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) || id <= 0)
+                    continue;
+
+                var primary = item.Elements("name").FirstOrDefault(n => (string?)n.Attribute("type") == "primary");
+                var name = (string?)primary?.Attribute("value") ?? (string?)item.Element("name")?.Attribute("value") ?? $"BGG {id}";
+
+                things.Add(new BggThingFetch(
+                    BggGameId: id,
+                    Type: (string?)item.Attribute("type") ?? string.Empty,
+                    Name: name,
+                    ImageUrl: (string?)item.Element("image"),
+                    ThumbnailUrl: (string?)item.Element("thumbnail"),
+                    MinPlayers: TryReadValue(item.Element("minplayers")),
+                    MaxPlayers: TryReadValue(item.Element("maxplayers")),
+                    MinPlayTimeMinutes: TryReadValue(item.Element("minplaytime")),
+                    MaxPlayTimeMinutes: TryReadValue(item.Element("maxplaytime")),
+                    RecommendedPlayerCounts: ParsePlayerCountPoll(item)));
+            }
         }
 
         return things;
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        if (resp.IsSuccessStatusCode) return;
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        var snippet = body.Length > 500 ? body[..500] + "…" : body;
+        throw new HttpRequestException(
+            $"BGG {(int)resp.StatusCode} {resp.ReasonPhrase} for {resp.RequestMessage?.RequestUri}: {snippet}",
+            inner: null,
+            statusCode: resp.StatusCode);
     }
 
     private static int? TryReadValue(XElement? el)

@@ -1,0 +1,48 @@
+@page "/night/{ShareCode}/invite/{VoterToken}"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGameNightService GameNights
+@inject IVotingService Voting
+@inject NavigationManager Nav
+
+<PageTitle>Joining…</PageTitle>
+
+@if (_status == Status.NotFound)
+{
+    <h1>Invite not found.</h1>
+    <p>That invite link doesn't match anything. Ask the host for a fresh one.</p>
+    <p><a href="/">← Back home</a></p>
+}
+else if (_status == Status.WrongNight)
+{
+    <h1>Wrong night.</h1>
+    <p>That invite belongs to a different Game Night.</p>
+    <p><a href="/night/@ShareCode">Open the night →</a></p>
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [Parameter] public string VoterToken { get; set; } = string.Empty;
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+
+    private Status _status;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpContext is null) return;
+
+        var night = await GameNights.GetByShareCodeAsync(ShareCode);
+        if (night is null) { _status = Status.NotFound; return; }
+
+        var progress = await Voting.GetProgressAsync(VoterToken);
+        if (progress is null) { _status = Status.NotFound; return; }
+        if (progress.GameNightId != night.Id) { _status = Status.WrongNight; return; }
+
+        // Adopt the voter identity by setting the per-night cookie, then send
+        // them into the swipe loop just like a normal join.
+        HttpContext.Response.Cookies.Append(VoterCookie.Name(ShareCode), VoterToken, VoterCookie.Options);
+        Nav.NavigateTo($"/night/{ShareCode}/swipe");
+    }
+
+    private enum Status { Ok, NotFound, WrongNight }
+}

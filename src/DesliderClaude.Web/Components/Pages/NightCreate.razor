@@ -68,8 +68,12 @@
         </fieldset>
 
         <fieldset class="fieldset">
-            <legend>Filter BGG games <span class="subtle">(hand-added ones always stay visible)</span></legend>
+            <legend>Filter BGG games <span class="subtle">(applies on add — hand-added games always stay)</span></legend>
             <div class="filter-grid">
+                <div>
+                    <label for="f-rec">Recommended for N players</label>
+                    <input id="f-rec" name="Form.RecommendedFor" type="number" min="1" max="20" value="@Form?.RecommendedFor" placeholder="e.g. 4" />
+                </div>
                 <div>
                     <label for="f-players">Player count <span class="subtle">(min / max)</span></label>
                     <div class="inline-row">
@@ -83,10 +87,6 @@
                         <input id="f-time" name="Form.MinPlayTime" type="number" min="0" max="999" value="@Form?.MinPlayTime" placeholder="min" />
                         <input name="Form.MaxPlayTime" type="number" min="0" max="999" value="@Form?.MaxPlayTime" placeholder="max" />
                     </div>
-                </div>
-                <div>
-                    <label for="f-rec">Recommended for N players</label>
-                    <input id="f-rec" name="Form.RecommendedFor" type="number" min="1" max="20" value="@Form?.RecommendedFor" placeholder="e.g. 4" />
                 </div>
             </div>
             <div class="btn-row" style="margin-top: var(--s-3);">
@@ -270,7 +270,7 @@
                 }
                 break;
             case "filter":
-                // Just re-render — filters come from Form fields directly.
+                ApplyFiltersInPlace();
                 break;
             case "create":
                 await CreateAsync(uid.Value);
@@ -319,6 +319,7 @@
 
         var knownBgg = _candidates.Where(c => c.BggGameId > 0).Select(c => c.BggGameId).ToHashSet();
         var added = 0;
+        var skippedByFilter = 0;
         foreach (var g in games)
         {
             if (knownBgg.Contains(g.BggGameId)) continue;
@@ -329,19 +330,67 @@
                 .OrderBy(n => n)
                 .ToList();
 
-            _candidates.Add(new Candidate(
+            var candidate = new Candidate(
                 g.Name, g.BggGameId, g.ImageUrl, g.ThumbnailUrl,
                 IsManual: false,
                 g.MinPlayers, g.MaxPlayers, g.MinPlayTimeMinutes, g.MaxPlayTimeMinutes,
-                recs));
+                recs);
+
+            // Active filters apply at add time too — no point loading a 200-game
+            // library into the form when the user only wants 4-player games.
+            if (!IsVisible(candidate))
+            {
+                skippedByFilter++;
+                continue;
+            }
+
+            _candidates.Add(candidate);
             _selected.Add(true);
             knownBgg.Add(g.BggGameId);
             added++;
         }
 
-        _notice = added == 0
-            ? "Every game in that library is already on the list."
-            : added == 1 ? "Added 1 game." : $"Added {added} games.";
+        if (added == 0 && skippedByFilter > 0)
+        {
+            _notice = $"No games matched the filter ({skippedByFilter} skipped). Loosen the filter and try again.";
+        }
+        else if (added == 0)
+        {
+            _notice = "Every game in that library is already on the list.";
+        }
+        else
+        {
+            var tail = skippedByFilter > 0 ? $" ({skippedByFilter} skipped by filter)" : "";
+            _notice = added == 1 ? $"Added 1 game.{tail}" : $"Added {added} games.{tail}";
+        }
+    }
+
+    private void ApplyFiltersInPlace()
+    {
+        // Filtering is destructive: non-matching BGG candidates leave the list
+        // entirely. Manual rows always survive (per product rule). Survivors
+        // are auto-selected — the user just said "I want exactly these".
+        var keep = new List<Candidate>(_candidates.Count);
+        var keepSelected = new List<bool>(_candidates.Count);
+        var dropped = 0;
+        for (var i = 0; i < _candidates.Count; i++)
+        {
+            if (IsVisible(_candidates[i]))
+            {
+                keep.Add(_candidates[i]);
+                keepSelected.Add(true);
+            }
+            else
+            {
+                dropped++;
+            }
+        }
+        _candidates = keep;
+        _selected = keepSelected;
+        if (dropped > 0)
+        {
+            _notice = dropped == 1 ? "Removed 1 game that didn't match." : $"Removed {dropped} games that didn't match.";
+        }
     }
 
     private void SetVisibleSelection(bool value)

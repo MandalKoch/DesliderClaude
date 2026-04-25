@@ -1,4 +1,5 @@
 @page "/night/{ShareCode}/host"
+@using System.Globalization
 @using DesliderClaude.Core.Models
 @using DesliderClaude.Core.Services
 @inject IGameNightService GameNights
@@ -64,6 +65,95 @@ else
         <div class="host-stat"><span class="host-stat-num">@_totalSwipes</span><span class="host-stat-label">swipe@(_totalSwipes == 1 ? "" : "s")</span></div>
     </div>
 
+    <div class="btn-row host-actions">
+        <a class="btn btn-cyan" href="/night/@ShareCode">Vote as host →</a>
+        <a class="btn btn-ghost" href="/night/@ShareCode/winner">Current pick →</a>
+        @if (!_night.IsClosed)
+        {
+            <form method="post" @formname="close-night" @onsubmit="CloseAsync" class="host-close-form">
+                <AntiforgeryToken />
+                <button type="submit" class="btn btn-primary btn-close-vote">
+                    <span class="emoji" aria-hidden="true">⏻</span> Close voting
+                </button>
+            </form>
+        }
+        else
+        {
+            <form method="post" @formname="reopen-night" @onsubmit="ReopenAsync" style="display: inline;">
+                <AntiforgeryToken />
+                <button type="submit" class="btn btn-ghost">Re-open voting</button>
+            </form>
+        }
+    </div>
+
+    <h2 class="kicker" style="margin-top: var(--s-6);">Voters</h2>
+    <form method="post" @formname="voters" @onsubmit="VotersFormAsync">
+        <AntiforgeryToken />
+        @if (_voters.Count == 0)
+        {
+            <p class="subtle">Nobody's joined yet. Share the link, or pre-name a voter below.</p>
+        }
+        else
+        {
+            var gameCount = _night.Games.Count;
+            <ul class="voter-list">
+                @foreach (var v in _voters)
+                {
+                    var pct = gameCount == 0 ? 0 : (int)Math.Round(100.0 * v.SwipesCast / gameCount);
+                    var inviteUrl = $"{_baseUrl}/night/{ShareCode}/invite/{v.VoterToken}";
+                    <li class="voter-row @(v.SwipesCast == 0 ? "voter-pending" : null)">
+                        <div class="voter-meta">
+                            <span class="voter-name">@v.DisplayName</span>
+                            <span class="voter-progress-text">
+                                @v.SwipesCast / @gameCount
+                                @if (v.LastSwipeAt is { } last)
+                                {
+                                    <span class="subtle"> · last swipe @FormatRelative(last)</span>
+                                }
+                                else
+                                {
+                                    <span class="subtle"> · hasn't started</span>
+                                }
+                            </span>
+                        </div>
+                        <progress class="voter-progress" max="@gameCount" value="@v.SwipesCast" aria-label="@pct%"></progress>
+                        @if (!_night.IsClosed)
+                        {
+                            <div class="voter-invite-btn">
+                                <button type="button" class="btn btn-ghost btn-sm"
+                                        onclick="navigator.clipboard.writeText('@inviteUrl');this.textContent='Copied ✓';setTimeout(()=>this.textContent='Copy invite',1500);">
+                                    Copy invite
+                                </button>
+                                <button type="submit" name="Form.RemoveVoterId" value="@v.VoterId"
+                                        class="btn btn-ghost btn-sm voter-remove-btn"
+                                        title="Remove @v.DisplayName and all their votes"
+                                        onclick="return confirm('Remove @v.DisplayName and delete all their votes?');">
+                                    ✕
+                                </button>
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (!_night.IsClosed)
+        {
+            <div class="form-inline" style="margin-top: var(--s-3);">
+                <label for="invite-name" class="visually-hidden">Invite by name</label>
+                <input id="invite-name" name="Form.InviteName" value="@Form?.InviteName" maxlength="40" placeholder="Pre-name a voter (e.g. Alice)" />
+                <button type="submit" name="Form.Action" value="invite" class="btn btn-ghost">+ Add invite</button>
+            </div>
+            @if (!string.IsNullOrEmpty(_lastInviteUrl))
+            {
+                <p class="text-ok" style="margin-top: var(--s-2);">
+                    Invite for <strong>@_lastInviteName</strong> ready —
+                    <a href="@_lastInviteUrl">@_lastInviteUrl</a>
+                </p>
+            }
+        }
+    </form>
+
     @if (_ranking.Count > 0)
     {
         <h2 class="kicker" style="margin-top: var(--s-6);">Live standings</h2>
@@ -86,44 +176,6 @@ else
         </ol>
     }
 
-    <div class="btn-row" style="margin-top: var(--s-6);">
-        <a class="btn btn-cyan" href="/night/@ShareCode">Vote as host →</a>
-        <a class="btn btn-ghost" href="/night/@ShareCode/winner">Current pick →</a>
-    </div>
-
-    @if (!_night.IsClosed)
-    {
-        <hr />
-        <div class="form-card">
-            <h2 style="margin: 0 0 var(--s-3);">Close voting</h2>
-            <p class="subtle">
-                Locks the ranking and flips everyone's swipe screen to the winner. You can re-open later if you change your mind.
-            </p>
-            <form method="post" @formname="close-night" @onsubmit="CloseAsync">
-                <AntiforgeryToken />
-                <div class="btn-row">
-                    <button type="submit" class="btn btn-primary">Close voting & lock the pick</button>
-                </div>
-            </form>
-        </div>
-    }
-    else
-    {
-        <hr />
-        <div class="form-card">
-            <h2 style="margin: 0 0 var(--s-3);">Re-open voting</h2>
-            <p class="subtle">
-                Unlocks the night so voters can keep swiping. Existing swipes stay intact.
-            </p>
-            <form method="post" @formname="reopen-night" @onsubmit="ReopenAsync">
-                <AntiforgeryToken />
-                <div class="btn-row">
-                    <button type="submit" class="btn btn-ghost">Re-open voting</button>
-                </div>
-            </form>
-        </div>
-    }
-
     @if (!string.IsNullOrEmpty(_error))
     {
         <p class="text-danger">@_error</p>
@@ -134,15 +186,20 @@ else
     [Parameter] public string ShareCode { get; set; } = string.Empty;
     [CascadingParameter] public Task<AuthenticationState>? AuthState { get; set; }
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [SupplyParameterFromForm] public InviteFormModel? Form { get; set; }
 
     private GameNight? _night;
     private bool _isHost;
     private Guid? _currentUserId;
     private string _shareUrl = string.Empty;
+    private string _baseUrl = string.Empty;
     private int _voterCount;
     private int _totalSwipes;
     private IReadOnlyList<GameRanking> _ranking = Array.Empty<GameRanking>();
+    private IReadOnlyList<VoterStatus> _voters = Array.Empty<VoterStatus>();
     private string? _error;
+    private string? _lastInviteUrl;
+    private string? _lastInviteName;
 
     protected override async Task OnInitializedAsync()
     {
@@ -160,12 +217,85 @@ else
             && hostId == uid;
         if (!_isHost) return;
 
-        _shareUrl = HttpContext is null
-            ? $"/night/{ShareCode}"
-            : $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/night/{ShareCode}";
+        _baseUrl = HttpContext is null
+            ? string.Empty
+            : $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
+        _shareUrl = $"{_baseUrl}/night/{ShareCode}";
         _ranking = await Voting.GetRankingAsync(_night.Id);
-        _voterCount = await Voting.GetVoterCountAsync(_night.Id);
+        _voters = await Voting.ListVoterStatusesAsync(_night.Id);
+        _voterCount = _voters.Count;
         _totalSwipes = _ranking.Sum(r => r.YesCount + r.NoCount);
+    }
+
+    private async Task VotersFormAsync()
+    {
+        _error = null;
+        _lastInviteUrl = null;
+        _lastInviteName = null;
+        if (_night is null || !_isHost) return;
+
+        // Per-voter remove takes precedence — the row's submit button posts the
+        // VoterId, anything else is the invite-by-name action.
+        if (Form?.RemoveVoterId is Guid removeId && removeId != Guid.Empty)
+        {
+            try
+            {
+                await Voting.RemoveVoterAsync(removeId, _night.Id);
+            }
+            catch (Exception ex)
+            {
+                _error = ex.Message;
+            }
+            await ReloadVotersAsync();
+            return;
+        }
+
+        if (Form?.Action == "invite")
+        {
+            var name = Form.InviteName?.Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                _error = "Type a name for the invite.";
+                return;
+            }
+            try
+            {
+                var voter = await Voting.CreateInviteAsync(_night.Id, name);
+                _lastInviteName = voter.DisplayName;
+                _lastInviteUrl = $"{_baseUrl}/night/{ShareCode}/invite/{voter.VoterToken}";
+                if (Form is not null) Form.InviteName = string.Empty;
+                await ReloadVotersAsync();
+            }
+            catch (Exception ex)
+            {
+                _error = ex.Message;
+            }
+        }
+    }
+
+    private async Task ReloadVotersAsync()
+    {
+        if (_night is null) return;
+        _voters = await Voting.ListVoterStatusesAsync(_night.Id);
+        _voterCount = _voters.Count;
+        _ranking = await Voting.GetRankingAsync(_night.Id);
+        _totalSwipes = _ranking.Sum(r => r.YesCount + r.NoCount);
+    }
+
+    private static string FormatRelative(DateTimeOffset when)
+    {
+        var diff = DateTimeOffset.UtcNow - when;
+        if (diff < TimeSpan.FromMinutes(1)) return "just now";
+        if (diff < TimeSpan.FromHours(1)) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff < TimeSpan.FromDays(1)) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+
+    public sealed class InviteFormModel
+    {
+        public string InviteName { get; set; } = string.Empty;
+        public string Action { get; set; } = string.Empty;
+        public Guid? RemoveVoterId { get; set; }
     }
 
     private async Task CloseAsync()

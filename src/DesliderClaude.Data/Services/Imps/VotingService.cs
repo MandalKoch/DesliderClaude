@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using DesliderClaude.Core.Models;
 using DesliderClaude.Core.Services;
 using Microsoft.EntityFrameworkCore;
@@ -93,6 +94,80 @@ internal sealed class VotingService : IVotingService
 
     public Task<int> GetVoterCountAsync(Guid gameNightId, CancellationToken ct = default)
         => _db.Voters.CountAsync(v => v.GameNightId == gameNightId, ct);
+
+    public async Task<IReadOnlyList<VoterStatus>> ListVoterStatusesAsync(Guid gameNightId, CancellationToken ct = default)
+    {
+        // SQLite can't translate Max over DateTimeOffset, so we materialise the
+        // raw swipe times and reduce in memory. The voter set per night is small.
+        var rows = await _db.Voters
+            .Where(v => v.GameNightId == gameNightId)
+            .Select(v => new
+            {
+                v.Id,
+                v.DisplayName,
+                v.VoterToken,
+                SwipeTimes = v.Swipes.Select(s => s.SwipedAt).ToList(),
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new VoterStatus(
+                r.Id,
+                r.DisplayName,
+                r.VoterToken,
+                r.SwipeTimes.Count,
+                r.SwipeTimes.Count == 0 ? null : r.SwipeTimes.Max()))
+            .OrderByDescending(s => s.SwipesCast)
+            .ThenBy(s => s.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<VoterPublicStatus>> ListPublicVoterStatusesAsync(Guid gameNightId, CancellationToken ct = default)
+    {
+        var rows = await _db.Voters
+            .Where(v => v.GameNightId == gameNightId)
+            .Select(v => new
+            {
+                v.DisplayName,
+                SwipeTimes = v.Swipes.Select(s => s.SwipedAt).ToList(),
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new VoterPublicStatus(
+                r.DisplayName,
+                r.SwipeTimes.Count,
+                r.SwipeTimes.Count == 0 ? null : r.SwipeTimes.Max()))
+            .OrderByDescending(s => s.SwipesCast)
+            .ThenBy(s => s.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public async Task RemoveVoterAsync(Guid voterId, Guid gameNightId, CancellationToken ct = default)
+    {
+        var voter = await _db.Voters.FirstOrDefaultAsync(v => v.Id == voterId && v.GameNightId == gameNightId, ct);
+        if (voter is null) return;
+        // Swipes cascade-delete via the Voter→Swipes FK.
+        _db.Voters.Remove(voter);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<Voter> CreateInviteAsync(Guid gameNightId, string displayName, CancellationToken ct = default)
+    {
+        var name = displayName.Trim();
+        if (string.IsNullOrEmpty(name))
+            throw new InvalidOperationException("Invite name is required.");
+
+        var voter = new Voter
+        {
+            GameNightId = gameNightId,
+            DisplayName = name,
+            VoterToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
+        };
+        _db.Voters.Add(voter);
+        await _db.SaveChangesAsync(ct);
+        return voter;
+    }
 
     public async Task<VoterProgress?> GetProgressAsync(string voterToken, CancellationToken ct = default)
     {

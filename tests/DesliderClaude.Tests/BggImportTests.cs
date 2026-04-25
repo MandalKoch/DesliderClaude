@@ -18,17 +18,17 @@ public sealed class BggImportTests : PageTest
         _ = _app.Server;
 
         _app.Bgg.GeekLists[4242] = new BggGeekListFetch(4242, "My Test Geeklist", new[] { 13, 9209, 266192 });
-        _app.Bgg.Things[13] = new BggThingFetch(13, "Catan", "img/catan.jpg", "thumb/catan.jpg",
+        _app.Bgg.Things[13] = new BggThingFetch(13, "boardgame", "Catan", "img/catan.jpg", "thumb/catan.jpg",
             MinPlayers: 3, MaxPlayers: 4, MinPlayTimeMinutes: 60, MaxPlayTimeMinutes: 120,
             RecommendedPlayerCounts: new[]
             {
                 new BggPlayerCountVote(3, BggPlayerCountKind.Recommended),
                 new BggPlayerCountVote(4, BggPlayerCountKind.Best),
             });
-        _app.Bgg.Things[9209] = new BggThingFetch(9209, "Ticket to Ride", null, null,
+        _app.Bgg.Things[9209] = new BggThingFetch(9209, "boardgame", "Ticket to Ride", null, null,
             MinPlayers: 2, MaxPlayers: 5, MinPlayTimeMinutes: 30, MaxPlayTimeMinutes: 60,
             RecommendedPlayerCounts: Array.Empty<BggPlayerCountVote>());
-        _app.Bgg.Things[266192] = new BggThingFetch(266192, "Wingspan", null, null,
+        _app.Bgg.Things[266192] = new BggThingFetch(266192, "boardgame", "Wingspan", null, null,
             MinPlayers: 1, MaxPlayers: 5, MinPlayTimeMinutes: 40, MaxPlayTimeMinutes: 70,
             RecommendedPlayerCounts: Array.Empty<BggPlayerCountVote>());
     }

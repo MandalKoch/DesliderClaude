@@ -72,8 +72,11 @@ internal sealed class BggImportService : IBggImportService
 
     public async Task RefreshAsync(Guid importId, Guid userId, CancellationToken ct = default)
     {
+        // Don't .Include(Items) here — ReplaceItemsAsync wipes them via
+        // ExecuteDeleteAsync (SQL-only) and rebuilds. Loading them into the
+        // change tracker first means re-adding rows with the same composite
+        // key throws "another instance with the same key is already tracked".
         var import = await _db.BggImports
-            .Include(i => i.Items)
             .FirstOrDefaultAsync(i => i.Id == importId && i.UserId == userId, ct)
             ?? throw new InvalidOperationException("Import not found.");
 
@@ -143,7 +146,7 @@ internal sealed class BggImportService : IBggImportService
         if (gameIds.Count == 0) return Array.Empty<BggCandidateGame>();
 
         var rows = await _db.BggGames
-            .Where(g => gameIds.Contains(g.BggGameId))
+            .Where(g => gameIds.Contains(g.BggGameId) && g.Type == "boardgame")
             .Select(g => new
             {
                 g.BggGameId,
@@ -188,7 +191,10 @@ internal sealed class BggImportService : IBggImportService
     }
 
     /// <summary>Core upsert: fetches/refreshes BggGame rows for <paramref name="gameIds"/>,
-    /// replaces the import's items list, and bumps LastRefreshedAt.</summary>
+    /// replaces the import's items list, and bumps LastRefreshedAt. Expansions
+    /// and accessories are fetched (so we know what they are) but skipped from
+    /// the import's <see cref="BggImportItem"/> list — only "boardgame" items
+    /// surface as candidates.</summary>
     private async Task ReplaceItemsAsync(BggImport import, IReadOnlyList<int> gameIds, string displayName, CancellationToken ct)
     {
         import.Name = displayName;
@@ -202,43 +208,73 @@ internal sealed class BggImportService : IBggImportService
             return;
         }
 
-        // Upsert the BggGame cache for every ID we don't already know about, or
-        // that hasn't been fetched yet. "Forever cache" per the design — only
-        // refreshes when we've never seen the ID (avoids slamming BGG on every
-        // refresh of an import whose game list is unchanged).
-        var known = await _db.BggGames
+        // Existing BggGame rows for these IDs. Rows with Type == null pre-date
+        // the column, so we re-fetch to backfill — every other field gets
+        // refreshed at the same time. The "forever cache" rule still applies:
+        // if a row is fully populated, we don't hit BGG for it again.
+        var existing = await _db.BggGames
             .Where(g => gameIds.Contains(g.BggGameId))
-            .Select(g => g.BggGameId)
             .ToListAsync(ct);
+        var existingById = existing.ToDictionary(g => g.BggGameId);
 
-        var missing = gameIds.Except(known).ToList();
-        if (missing.Count > 0)
+        var needsFetch = gameIds
+            .Where(id => !existingById.TryGetValue(id, out var g) || g.Type is null)
+            .Distinct()
+            .ToList();
+
+        if (needsFetch.Count > 0)
         {
-            var things = await _bgg.FetchThingsAsync(missing, ct);
+            var things = await _bgg.FetchThingsAsync(needsFetch, ct);
             foreach (var t in things)
             {
-                _db.BggGames.Add(new BggGame
+                if (existingById.TryGetValue(t.BggGameId, out var row))
                 {
-                    BggGameId = t.BggGameId,
-                    Name = t.Name,
-                    ImageUrl = t.ImageUrl,
-                    ThumbnailUrl = t.ThumbnailUrl,
-                    MinPlayers = t.MinPlayers,
-                    MaxPlayers = t.MaxPlayers,
-                    MinPlayTimeMinutes = t.MinPlayTimeMinutes,
-                    MaxPlayTimeMinutes = t.MaxPlayTimeMinutes,
-                    RecommendedPlayerCountsJson = t.RecommendedPlayerCounts.Count == 0
+                    row.Type = t.Type;
+                    row.Name = t.Name;
+                    row.ImageUrl = t.ImageUrl;
+                    row.ThumbnailUrl = t.ThumbnailUrl;
+                    row.MinPlayers = t.MinPlayers;
+                    row.MaxPlayers = t.MaxPlayers;
+                    row.MinPlayTimeMinutes = t.MinPlayTimeMinutes;
+                    row.MaxPlayTimeMinutes = t.MaxPlayTimeMinutes;
+                    row.RecommendedPlayerCountsJson = t.RecommendedPlayerCounts.Count == 0
                         ? null
-                        : JsonSerializer.Serialize(t.RecommendedPlayerCounts, Json),
-                });
+                        : JsonSerializer.Serialize(t.RecommendedPlayerCounts, Json);
+                    row.LastFetchedAt = DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    var fresh = new BggGame
+                    {
+                        BggGameId = t.BggGameId,
+                        Type = t.Type,
+                        Name = t.Name,
+                        ImageUrl = t.ImageUrl,
+                        ThumbnailUrl = t.ThumbnailUrl,
+                        MinPlayers = t.MinPlayers,
+                        MaxPlayers = t.MaxPlayers,
+                        MinPlayTimeMinutes = t.MinPlayTimeMinutes,
+                        MaxPlayTimeMinutes = t.MaxPlayTimeMinutes,
+                        RecommendedPlayerCountsJson = t.RecommendedPlayerCounts.Count == 0
+                            ? null
+                            : JsonSerializer.Serialize(t.RecommendedPlayerCounts, Json),
+                    };
+                    _db.BggGames.Add(fresh);
+                    existingById[t.BggGameId] = fresh;
+                }
             }
         }
 
         await _db.SaveChangesAsync(ct);
 
-        // Attach items in a second save — need the BggGames to exist first.
-        foreach (var id in gameIds)
+        // Only "boardgame" items become BggImportItems — expansions and
+        // accessories are cached so we don't re-fetch them, but they don't
+        // count as candidates to swipe on.
+        foreach (var id in gameIds.Distinct())
         {
+            if (!existingById.TryGetValue(id, out var row)) continue;
+            if (!string.Equals(row.Type, "boardgame", StringComparison.Ordinal)) continue;
+
             _db.BggImportItems.Add(new BggImportItem
             {
                 BggImportId = import.Id,

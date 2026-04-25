@@ -5,6 +5,10 @@ namespace DesliderClaude.Core.Models;
 public class BggGame
 {
     public int BggGameId { get; set; }
+
+    /// <summary>BGG item type: "boardgame", "boardgameexpansion", or "boardgameaccessory".
+    /// Null on rows cached before the column existed — refreshed lazily on next fetch.</summary>
+    public string? Type { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public string? ThumbnailUrl { get; set; }

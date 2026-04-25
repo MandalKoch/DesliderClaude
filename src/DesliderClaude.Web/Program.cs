@@ -34,6 +34,15 @@ builder.Services
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 
+// /create round-trips one hidden field per candidate per attribute, so a
+// 200-game BGG library blows past the default 1024-field cap. When the cap
+// trips, the form parser drops every field — including the antiforgery
+// token — and the failure surfaces as a misleading antiforgery error.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.ValueCountLimit = 16_384;
+});
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
