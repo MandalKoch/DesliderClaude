@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Patch the transitive StreamJsonRpc dependency until Aspire updates it. -->
+    <PackageReference Include="MessagePack" Version="2.5.307" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DesliderClaude.Web\DesliderClaude.Web.csproj" />
     <ProjectReference Include="..\DesliderClaude.MigrationService\DesliderClaude.MigrationService.csproj" />
   </ItemGroup>
