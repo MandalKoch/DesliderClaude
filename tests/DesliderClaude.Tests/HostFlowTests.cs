@@ -35,6 +35,7 @@ public sealed class HostFlowTests : PageTest
         {
             await page.GetByLabel("Add a single game").FillAsync(n);
             await page.Locator("button[name='Form.Action'][value='add-text']").ClickAsync();
+            await Microsoft.Playwright.Assertions.Expect(page.Locator(".shortlist-row .candidate-name").Filter(new() { HasText = n })).ToBeVisibleAsync();
         }
     }
 
@@ -69,7 +70,7 @@ public sealed class HostFlowTests : PageTest
 
         await Page.GotoAsync("/create");
         await Page.GetByLabel("Night name").FillAsync("E2E Test Night");
-        await Page.GetByLabel("Target date").FillAsync("2026-05-01");
+        await Expect(Page.GetByLabel("Target date")).ToHaveCountAsync(0);
         await AddManualGamesAsync(Page, "Catan", "Azul", "Wingspan");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
 
@@ -96,6 +97,7 @@ public sealed class HostFlowTests : PageTest
         await Page.GetByLabel("Night name").FillAsync("Stranger Danger");
         await AddManualGamesAsync(Page, "A", "B");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
         var hostUrl = Page.Url;
 
         var freshContext = await Browser.NewContextAsync(new() { BaseURL = _app.ServerUrl });
@@ -126,6 +128,7 @@ public sealed class HostFlowTests : PageTest
         await Page.GetByLabel("Night name").FillAsync(nightName);
         await AddManualGamesAsync(Page, games.Split('\n'));
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
         var url = new Uri(Page.Url);
         return url.AbsolutePath.Split('/')[2];
     }
@@ -143,14 +146,14 @@ public sealed class HostFlowTests : PageTest
         var anon = await anonymous.NewPageAsync();
 
         await anon.GotoAsync($"/night/{firstCode}");
-        await anon.GetByLabel("Your callsign").FillAsync("Mystery Bob");
-        await anon.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+        await anon.GetByLabel("Your name").FillAsync("Mystery Bob");
+        await anon.GetByRole(AriaRole.Button, new() { Name = "Join the vote" }).ClickAsync();
         await Expect(anon).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"/night/{firstCode}/swipe$"));
 
         await anon.GotoAsync($"/night/{secondCode}");
         // Prompt shows up again — browser autocomplete may prefill the input,
         // but the server-side auto-join has no way to recognise the same visitor.
-        await Expect(anon.GetByLabel("Your callsign")).ToBeVisibleAsync();
+        await Expect(anon.GetByLabel("Your name")).ToBeVisibleAsync();
 
         await anonymous.CloseAsync();
     }
@@ -163,6 +166,7 @@ public sealed class HostFlowTests : PageTest
         await Page.GetByLabel("Night name").FillAsync("Auto-Join Night");
         await AddManualGamesAsync(Page, "A", "B", "C");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
         var hostUrl = Page.Url;
         var shareCode = new Uri(hostUrl).AbsolutePath.Split('/')[2];
 
@@ -189,8 +193,8 @@ public sealed class HostFlowTests : PageTest
 
         // Same browser, now anonymous: join and swipe every game.
         await Page.GotoAsync($"/night/{shareCode}");
-        await Page.GetByLabel("Your callsign").FillAsync("Voter Vee");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+        await Page.GetByLabel("Your name").FillAsync("Voter Vee");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Join the vote" }).ClickAsync();
 
         for (int i = 0; i < 3; i++)
         {
@@ -222,6 +226,7 @@ public sealed class HostFlowTests : PageTest
         await Page.GetByLabel("Night name").FillAsync("List-Check Night");
         await AddManualGamesAsync(Page, "A", "B", "C");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
 
         await Page.GotoAsync("/");
         await Expect(Page.GetByText("List-Check Night")).ToBeVisibleAsync();
@@ -239,8 +244,8 @@ public sealed class HostFlowTests : PageTest
 
         // Anonymous join + one swipe.
         await Page.GotoAsync($"/night/{shareCode}");
-        await Page.GetByLabel("Your callsign").FillAsync("Restorable Ray");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+        await Page.GetByLabel("Your name").FillAsync("Restorable Ray");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Join the vote" }).ClickAsync();
         await Page.Locator("button[name='Form.Yes'][value='true']").First.ClickAsync();
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 

@@ -46,6 +46,7 @@ public sealed class VoterManagementTests : PageTest
         {
             await Page.GetByLabel("Add a single game").FillAsync(g);
             await Page.Locator("button[name='Form.Action'][value='add-text']").ClickAsync();
+            await Expect(Page.Locator(".shortlist-row .candidate-name").Filter(new() { HasText = g })).ToBeVisibleAsync();
         }
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create night" }).ClickAsync();
         await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(@"/night/[a-z0-9\-]+/host$"));
@@ -128,8 +129,8 @@ public sealed class VoterManagementTests : PageTest
 
         // Anonymous voter joins + casts one swipe.
         await Page.GotoAsync($"/night/{shareCode}");
-        await Page.GetByLabel("Your callsign").FillAsync("Charlie Watcher");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Enter the deck" }).ClickAsync();
+        await Page.GetByLabel("Your name").FillAsync("Charlie Watcher");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Join the vote" }).ClickAsync();
         await Page.Locator("button[name='Form.Yes'][value='true']").First.ClickAsync();
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 

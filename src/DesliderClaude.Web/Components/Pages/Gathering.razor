@@ -1,0 +1,432 @@
+@page "/gathering/{ShareCode}"
+@using System.Security.Cryptography
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGatheringService Gatherings
+@inject IBggImportService Libraries
+@inject IVotingService Voting
+@inject NavigationManager Nav
+
+<PageTitle>@(_gathering?.Name ?? "Gathering") — DesliderClaude</PageTitle>
+
+<div class="gathering-page">
+@if (_gathering is null)
+{
+    <h1>Gathering not found.</h1>
+    <p>Check your invitation link, or <a href="/">return home</a>.</p>
+}
+else
+{
+    <a class="back-link" href="/">← Your table</a>
+    <header class="gathering-header">
+        <div><span class="eyebrow">One gathering. Many good games.</span><h1>@_gathering.Name</h1></div>
+        <span class="people-count"><MeepleIcon /> @_gathering.Members.Count people · @_gathering.Games.Count games</span>
+    </header>
+    <nav class="section-nav" aria-label="Gathering sections">
+        <a href="@SectionUrl("suggestions")">01 · Suggestions</a><a href="@SectionUrl("bring-list")">02 · Bring list</a><a href="@SectionUrl("play")">03 · Let's play</a>
+    </nav>
+    <section class="share-card" aria-label="Invite friends">
+        <div><strong>Good weekends start with good company.</strong><p>Share this link. Friends only need a name to join.</p></div>
+        <label class="visually-hidden" for="gathering-link">Gathering invitation link</label>
+        <input id="gathering-link" readonly value="@Nav.ToAbsoluteUri($"/gathering/{ShareCode}")" onclick="this.select()" />
+        <button type="button" class="btn btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('gathering-link').value).then(()=>this.textContent='Link copied').catch(()=>this.textContent='Select and copy the link');">Copy invite link</button>
+    </section>
+    @if (_error is not null) { <p class="text-danger feedback" role="alert">@_error</p> }
+    @if (_notice is not null) { <p class="text-ok feedback" role="status">@_notice</p> }
+
+    @if (_member is null)
+    {
+        <section class="panel join-panel">
+            <span class="eyebrow">Pull up a chair</span><h2>Who's joining us?</h2>
+            <p>Join once to suggest games, show interest, and take part in game votes.</p>
+            <form method="post" @formname="gathering-join" @onsubmit="HandleAsync">
+                <AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="join" />
+                <label for="member-name">Your name</label>
+                <input id="member-name" name="Form.DisplayName" value="@Form?.DisplayName" maxlength="40" autocomplete="nickname" required />
+                <button class="btn btn-primary" type="submit">Join gathering</button>
+            </form>
+        </section>
+    }
+    else
+    {
+        <p class="member-greeting">You're here as <strong>@_member.DisplayName</strong>@(_isHost ? " · You're hosting" : "")</p>
+    }
+
+    <section id="suggestions" class="stage">
+        <div class="section-heading"><div><span class="eyebrow">01 · Before you pack</span><h2>What should we bring?</h2></div><span>@_gathering.Games.Count suggestions</span></div>
+        <p class="section-intro">Suggest games you could bring. Show which ones you'd be excited to play; the host will put together the bring list.</p>
+        @if (_member is not null)
+        {
+            <div class="panel add-panel">
+                <form method="post" @formname="gathering-add-game" @onsubmit="HandleAsync" data-enhance>
+                    <AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="add-game" />
+                    <label for="game-name">Suggest a game you can bring</label>
+                    <div class="input-action"><input id="game-name" name="Form.GameName" value="@(_error is not null ? Form?.GameName : null)" maxlength="200" placeholder="e.g. Cascadia" required /><button class="btn btn-primary" type="submit">Add game</button></div>
+                </form>
+                <a class="browse-shortcut" href="@SectionUrl("choose-games")">Choose from BGG or your library ↓</a>
+            </div>
+        }
+        <h3 class="subheading">Games suggested for this gathering</h3>
+        @if (_gathering.Games.Count == 0)
+        {
+            <div class="empty-state"><span aria-hidden="true">＋</span><h3>The table is open.</h3><p>Add the first game, then invite everyone to add their favourites.</p></div>
+        }
+        else
+        {
+            <ul class="game-grid">
+                @foreach (var game in _gathering.Games.OrderByDescending(g => g.Interests.Count(i => i.Interested)).ThenBy(g => g.Name))
+                {
+                    var interested = game.Interests.FirstOrDefault(i => i.MemberId == _member?.Id)?.Interested;
+                    <li class="game-card">
+                        <div class="game-art">@if (game.ThumbnailUrl is not null) { <img src="@game.ThumbnailUrl" alt="" loading="lazy" referrerpolicy="no-referrer" /> } else { <span aria-hidden="true">@game.Name[..1]</span> }</div>
+                        <div class="game-content"><span class="game-source">Suggested by @MemberName(game.SuggestedByMemberId)</span><h3>@game.Name</h3>
+                            <p class="interest-count">@game.Interests.Count(i => i.Interested) interested @if (game.IsConfirmed) { <span class="packed-badge">On the bring list</span> }</p>
+                            @if (_member is not null)
+                            {
+                                <form method="post" @formname="@($"interest-{game.Id}")" @onsubmit="HandleAsync" class="interest-actions" data-enhance>
+                                    <AntiforgeryToken />@PickerState<input type="hidden" name="Form.GameId" value="@game.Id" />
+                                    <button class="btn btn-sm @(interested == true ? "btn-primary" : "btn-ghost")" type="submit" name="Form.Action" value="interested" aria-pressed="@(interested == true ? "true" : "false")">I'd play this</button>
+                                    <button class="btn btn-sm btn-ghost" type="submit" name="Form.Action" value="not-interested" aria-pressed="@(interested == false ? "true" : "false")">@(interested == false ? "Passed" : "Pass")</button>
+                                </form>
+                            }
+                            @if (_member is not null && (_isHost || game.SuggestedByMemberId == _member.Id))
+                            {
+                                var used = game.IsUsedInVote || _gathering.PlayedGames.Any(p => p.GatheringGameId == game.Id);
+                                <form method="post" @formname="@($"remove-game-{game.Id}")" @onsubmit="HandleAsync" data-enhance class="remove-suggestion">
+                                    <AntiforgeryToken />@PickerState<input type="hidden" name="Form.GameId" value="@game.Id" />
+                                    <button class="btn btn-ghost btn-sm" type="submit" name="Form.Action" value="remove-game" disabled="@(game.IsConfirmed || used)" aria-label="@($"Remove {game.Name} from suggestions")">Remove</button>
+                                    @if (used) { <span class="hint">Kept in your vote and played history.</span> }
+                                    else if (game.IsConfirmed) { <span class="hint">On the bring list. The host can remove it there first.</span> }
+                                </form>
+                            }
+                            @if (_isHost)
+                            {
+                                <form method="post" @formname="@($"confirm-{game.Id}")" @onsubmit="HandleAsync" class="host-game-controls" data-enhance>
+                                    <AntiforgeryToken />@PickerState<input type="hidden" name="Form.GameId" value="@game.Id" />
+                                    <label for="@($"bringer-{game.Id}")">Who brings it?</label>
+                                    <select id="@($"bringer-{game.Id}")" name="Form.BringerMemberId"><option value="">Not assigned yet</option>@foreach (var person in _gathering.Members) { <option value="@person.Id" selected="@(game.BringerMemberId == person.Id)">@person.DisplayName</option> }</select>
+                                    <div class="interest-actions"><button class="btn btn-ghost btn-sm" type="submit" name="Form.Action" value="confirm">@(game.IsConfirmed ? "Save bringer" : "Add to bring list")</button>@if (game.IsConfirmed) { <button class="btn btn-ghost btn-sm" type="submit" name="Form.Action" value="unconfirm">Remove from bring list</button> }</div>
+                                </form>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+        @if (_member is not null)
+        {
+            <section id="choose-games" class="library-browser panel" aria-labelledby="library-title">
+                <h3 id="library-title">Choose more games</h3>
+                <p class="hint">Browse your library or search BoardGameGeek. Tap a game to add it to the suggestions above.</p>
+                <form method="post" @formname="gathering-browse" @onsubmit="HandleAsync" class="browse-form" data-enhance>
+                    <AntiforgeryToken />
+                    <input type="hidden" name="Form.HasPickerState" value="true" />
+                    <input type="hidden" name="Form.BrowseSource" value="@ActiveSource" />
+                    @if (_libraries.Count > 0)
+                    {
+                        <label for="library-source">Your library</label>
+                        <div class="input-action"><select id="library-source" name="Form.LibraryId"><option value="">Choose a library…</option>@foreach (var library in _libraries) { <option value="@library.Id" selected="@(LibraryId == library.Id)">@library.Name</option> }</select><button class="btn btn-ghost" name="Form.Action" value="browse-library" type="submit">Browse library</button></div>
+                    }
+                    <label for="bgg-search">Search BoardGameGeek</label>
+                    <div class="input-action"><input id="bgg-search" type="search" name="Form.SearchQuery" value="@SearchQuery" maxlength="100" placeholder="e.g. Cascadia" /><button class="btn btn-ghost" name="Form.Action" value="search-bgg" type="submit">Search BGG</button></div>
+                    <details class="picker-filters" open="@(!string.IsNullOrWhiteSpace(Players) || !string.IsNullOrWhiteSpace(MaxMinutes) || Form?.Action is "filter-games" or "clear-filters")">
+                        <summary>Narrow it down <span class="hint">optional</span></summary>
+                        <div class="picker-filter-grid">
+                            <div><label for="picker-players">How many players?</label><input id="picker-players" name="Form.Players" type="number" min="1" max="99" value="@Players" placeholder="Any number" /></div>
+                            <div><label for="picker-time">Up to how many minutes?</label><input id="picker-time" name="Form.MaxMinutes" type="number" min="1" max="999" value="@MaxMinutes" placeholder="Any length" /></div>
+                        </div>
+                        <p class="hint">Filters only change available games. The gathering's suggestions stay in the list above.</p>
+                        <div class="interest-actions"><button class="btn btn-ghost btn-sm" type="submit" name="Form.Action" value="filter-games">Apply filters</button><button class="btn btn-ghost btn-sm" type="submit" name="Form.Action" value="clear-filters">Clear filters</button></div>
+                    </details>
+                </form>
+                @if (_pickerError is not null)
+                {
+                    <p class="text-danger" role="alert">@_pickerError You can still add a game by name above.</p>
+                }
+                else if (HasBrowseSource)
+                {
+                    var available = _libraryGames.Where(IsAvailable).ToList();
+                    <p class="available-count">@available.Count games available</p>
+                    @if (available.Count == 0) { <p class="hint">No more games match. Try another search or clear the filters.</p> }
+                    <form method="post" @formname="gathering-library-game" @onsubmit="HandleAsync" data-enhance>
+                        <AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="add-library-game" />
+                        <ul class="candidate-list">
+                            @foreach (var game in available)
+                            {
+                                <li class="candidate-row">
+                                    <button class="library-game unstyled" type="submit" name="Form.BggGameId" value="@game.BggGameId" aria-label="@($"Add {game.Name} to gathering")">
+                                        @if (!string.IsNullOrEmpty(game.ThumbnailUrl)) { <img class="candidate-thumb" src="@game.ThumbnailUrl" alt="" loading="lazy" referrerpolicy="no-referrer" /> }
+                                        <span class="candidate-main"><span class="candidate-name">@game.Name</span><span class="candidate-meta">@FormatRange(game.MinPlayers, game.MaxPlayers) players · @FormatRange(game.MinPlayTimeMinutes, game.MaxPlayTimeMinutes) min</span></span><span class="add-game-label" aria-hidden="true">＋ Add</span>
+                                    </button>
+                                    <a class="bgg-link" href="@($"https://boardgamegeek.com/boardgame/{game.BggGameId}")" target="_blank" rel="noopener noreferrer" aria-label="@($"Open {game.Name} on BoardGameGeek")">Open on BGG ↗</a>
+                                </li>
+                            }
+                        </ul>
+                    </form>
+                }
+            </section>
+        }
+    </section>
+
+    <section id="bring-list" class="stage">
+        <div class="section-heading"><div><span class="eyebrow">02 · Ready for the journey</span><h2>The bring list.</h2></div><span>@_gathering.Games.Count(g => g.IsConfirmed) games</span></div>
+        @if (!_gathering.Games.Any(g => g.IsConfirmed))
+        {
+            <p class="empty-copy">The host can add games from the suggestions above. A mix of short, long, and different player counts works well.</p>
+        }
+        else
+        {
+            <ul class="bring-list">@foreach (var game in _gathering.Games.Where(g => g.IsConfirmed).OrderBy(g => g.Name)) { <li><strong>@game.Name</strong><span>@(game.BringerMemberId is Guid bringer ? $"{MemberName(bringer)} brings this" : "Needs a bringer")</span></li> }</ul>
+        }
+    </section>
+
+    <section id="play" class="stage">
+        <div class="section-heading"><div><span class="eyebrow">03 · Around the table</span><h2>What shall we play next?</h2></div></div>
+        <p class="section-intro">Start a fresh vote from the games you brought. Each vote is separate; your bring list stays the same.</p>
+        @if (_isHost)
+        {
+            <form method="post" @formname="gathering-start-vote" @onsubmit="HandleAsync" class="panel" data-enhance>
+                <AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="start-vote" />
+                <label for="vote-name">Vote name</label><input id="vote-name" name="Form.VoteName" value="@(Form?.Action == "start-vote" ? Form.VoteName : $"What next? · Vote {_gathering.Rounds.Count + 1}")" maxlength="200" required />
+                <fieldset><legend>Choose at least two games</legend>
+                    @foreach (var game in _gathering.Games.Where(g => g.IsConfirmed).OrderBy(g => g.Name))
+                    {
+                        var plays = _gathering.PlayedGames.Count(p => p.GatheringGameId == game.Id);
+                        <label class="game-checkbox"><input type="checkbox" name="Form.GameIds" value="@game.Id" checked="@(Form?.Action == "start-vote" && _error is not null ? Form.GameIds?.Contains(game.Id) == true : plays == 0)" /><span>@game.Name @if (plays > 0) { <small>Played @plays time@(plays == 1 ? "" : "s") · choose again anytime</small> }</span></label>
+                    }
+                    @if (_gathering.Games.Count(g => g.IsConfirmed) < 2) { <p class="hint">Add at least two games to the bring list first.</p> }
+                </fieldset>
+                <p class="hint">Already played games start unchecked. Select them for a repeat.</p>
+                <button class="btn btn-primary" type="submit" disabled="@(_gathering.Games.Count(g => g.IsConfirmed) < 2)">Start a game vote →</button>
+            </form>
+        }
+        @if (_gathering.Rounds.Count > 0)
+        {
+            <h3 class="subheading">Game votes</h3><ul class="round-list">
+                @foreach (var round in _gathering.Rounds.OrderByDescending(r => r.CreatedAt))
+                {
+                    <li><div><strong>@round.Name</strong><span>@(round.IsClosed ? "Voting closed" : "Open for votes")</span></div><div class="interest-actions">
+                        @if (_member is not null && !round.IsClosed)
+                        {
+                            <form method="post" @formname="@($"join-round-{round.Id}")" @onsubmit="HandleAsync"><AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="join-round" /><input type="hidden" name="Form.RoundId" value="@round.Id" /><button class="btn btn-primary btn-sm" type="submit">Vote</button></form>
+                        }
+                        <a class="btn btn-ghost btn-sm" href="/night/@round.ShareCode/winner">Results</a>@if (_isHost) { <a class="btn btn-ghost btn-sm" href="/night/@round.ShareCode/host">Manage</a> }
+                    </div></li>
+                }
+            </ul>
+        }
+        @if (_isHost && _gathering.Games.Any(g => g.IsConfirmed))
+        {
+            <form method="post" @formname="gathering-played" @onsubmit="HandleAsync" class="panel played-form" data-enhance>
+                <AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="mark-played" />
+                <label for="played-game">What did you play?</label><p class="hint">Record what reached the table, regardless of the vote result.</p>
+                <div class="input-action"><select id="played-game" name="Form.GameId">@foreach (var game in _gathering.Games.Where(g => g.IsConfirmed).OrderBy(g => g.Name)) { <option value="@game.Id">@game.Name</option> }</select><button class="btn btn-primary" type="submit">Mark as played</button></div>
+            </form>
+        }
+        <h3 class="subheading">Around this table</h3>
+        @if (_gathering.PlayedGames.Count == 0) { <p class="empty-copy">Your played games will appear here. Winning a vote doesn't automatically mark a game played.</p> }
+        else { <ol class="history-list">@foreach (var played in _gathering.PlayedGames.OrderByDescending(p => p.PlayedAt)) { <li><strong>@played.GameName</strong><time datetime="@played.PlayedAt.ToString("O")">@played.PlayedAt.ToString("MMM d, HH:mm") UTC</time></li> }</ol> }
+    </section>
+}
+</div>
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "library")] public Guid? LibraryId { get; set; }
+    [SupplyParameterFromQuery(Name = "source")] public string? BrowseSource { get; set; }
+    [SupplyParameterFromQuery(Name = "q")] public string? SearchQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "players")] public string? Players { get; set; }
+    [SupplyParameterFromQuery(Name = "minutes")] public string? MaxMinutes { get; set; }
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [CascadingParameter] public Task<AuthenticationState>? AuthState { get; set; }
+    [SupplyParameterFromForm] public GatheringForm? Form { get; set; }
+    private GatheringView? _gathering;
+    private GatheringMemberView? _member;
+    private Guid? _userId;
+    private string? _memberToken;
+    private bool _isHost;
+    private string? _error;
+    private string? _notice;
+    private string? _pickerError;
+    private IReadOnlyList<BggImportView> _libraries = Array.Empty<BggImportView>();
+    private IReadOnlyList<BggCandidateGame> _libraryGames = Array.Empty<BggCandidateGame>();
+    private string CookieName => $"deslider-gathering-{ShareCode}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Form?.HasPickerState == true)
+        {
+            LibraryId = Form.LibraryId;
+            BrowseSource = Form.BrowseSource;
+            SearchQuery = Form.SearchQuery;
+            Players = Form.Players;
+            MaxMinutes = Form.MaxMinutes;
+        }
+        _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
+        if (_gathering is null || HttpContext is null) return;
+        var user = AuthState is null ? null : (await AuthState).User;
+        _userId = user?.GetUserId();
+        _isHost = _userId is not null && _gathering.CreatedByUserId == _userId;
+        _memberToken = HttpContext.Request.Cookies[CookieName];
+        if (_memberToken is not null) _member = await Gatherings.GetMemberAsync(_gathering.Id, _memberToken);
+        if (_member is null && _userId is not null && !string.IsNullOrEmpty(user?.GetUsername()))
+        {
+            _memberToken = NewToken();
+            _member = await Gatherings.JoinAsync(_gathering.Id, user.GetUsername()!, _memberToken, _userId);
+            SetMemberCookie();
+            _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
+        }
+        if (_userId is Guid userId) _libraries = await Libraries.ListForUserAsync(userId);
+        await LoadPickerAsync();
+    }
+
+    private async Task LoadPickerAsync()
+    {
+        _libraryGames = Array.Empty<BggCandidateGame>();
+        _pickerError = null;
+        if (_member is null) return;
+        try
+        {
+            if (ActiveSource == "search" && !string.IsNullOrWhiteSpace(SearchQuery))
+                _libraryGames = await Libraries.SearchGamesAsync(SearchQuery);
+            else if (LibraryId is Guid libraryId && _userId is Guid uid && _libraries.Any(l => l.Id == libraryId))
+                _libraryGames = await Libraries.ListCandidatesAsync(uid, new[] { libraryId });
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or ArgumentException or TaskCanceledException or System.Xml.XmlException)
+        {
+            _pickerError = "Couldn't load games from BoardGameGeek.";
+        }
+    }
+
+    private async Task HandleAsync()
+    {
+        if (_gathering is null || HttpContext is null) return;
+        try
+        {
+            switch (Form?.Action)
+            {
+                case "browse-library":
+                    BrowseSource = "library";
+                    await LoadPickerAsync();
+                    return;
+                case "search-bgg":
+                    BrowseSource = "search";
+                    await LoadPickerAsync();
+                    return;
+                case "filter-games":
+                    await LoadPickerAsync();
+                    return;
+                case "clear-filters":
+                    Players = MaxMinutes = null;
+                    await LoadPickerAsync();
+                    return;
+                case "join":
+                    _memberToken = NewToken();
+                    _member = await Gatherings.JoinAsync(_gathering.Id, Form.DisplayName ?? string.Empty, _memberToken, _userId);
+                    SetMemberCookie();
+                    Nav.NavigateTo($"/gathering/{ShareCode}");
+                    return;
+                case "add-game" when _member is not null && _memberToken is not null:
+                    await Gatherings.AddGameAsync(_gathering.Id, _memberToken, new GameCandidate(Form.GameName ?? string.Empty));
+                    _notice = "Game added. Friends can now show interest.";
+                    break;
+                case "add-library-game" when _member is not null && _memberToken is not null:
+                    var candidate = _libraryGames.FirstOrDefault(g => g.BggGameId == Form.BggGameId && IsAvailable(g))
+                        ?? throw new InvalidOperationException("Choose a game from your library first.");
+                    if (ActiveSource == "search") candidate = await Libraries.GetGameAsync(candidate.BggGameId);
+                    await Gatherings.AddGameAsync(_gathering.Id, _memberToken, new GameCandidate(candidate.Name, candidate.BggGameId, candidate.ImageUrl, candidate.ThumbnailUrl));
+                    _notice = "Game added to this gathering.";
+                    break;
+                case "remove-game" when _member is not null && _memberToken is not null && Form.GameId is Guid removeId:
+                    await Gatherings.RemoveGameAsync(_gathering.Id, _memberToken, removeId, _userId);
+                    _notice = "Game removed from suggestions. You can add it again from the available games.";
+                    break;
+                case "interested" or "not-interested" when _member is not null && _memberToken is not null && Form.GameId is Guid interestId:
+                    await Gatherings.SetInterestAsync(_gathering.Id, _memberToken, interestId, Form.Action == "interested");
+                    _notice = "Your interest has been saved.";
+                    break;
+                case "confirm" or "unconfirm" when _isHost && _userId is Guid host && Form.GameId is Guid confirmId:
+                    await Gatherings.ConfirmGameAsync(_gathering.Id, host, confirmId, Form.Action == "confirm", Form.BringerMemberId);
+                    _notice = "Bring list updated.";
+                    break;
+                case "start-vote" when _isHost && _userId is Guid voteHost:
+                    await Gatherings.StartVoteAsync(_gathering.Id, voteHost, Form.VoteName ?? string.Empty, Form.GameIds ?? new List<Guid>());
+                    _notice = "Vote started. Everyone can join below without entering their name again.";
+                    break;
+                case "mark-played" when _isHost && _userId is Guid playedHost && Form.GameId is Guid playedId:
+                    await Gatherings.MarkPlayedAsync(_gathering.Id, playedHost, playedId);
+                    _notice = "Added to your played history.";
+                    break;
+                case "join-round" when _member is not null:
+                    var round = _gathering.Rounds.FirstOrDefault(r => r.Id == Form.RoundId && !r.IsClosed)
+                        ?? throw new InvalidOperationException("This vote is no longer open.");
+                    var voterToken = HttpContext.Request.Cookies[VoterCookie.Name(round.ShareCode)] ?? VoterCookie.NewToken();
+                    await Voting.JoinAsync(round.Id, _member.DisplayName, voterToken, _member.UserId);
+                    HttpContext.Response.Cookies.Append(VoterCookie.Name(round.ShareCode), voterToken, VoterCookie.Options);
+                    Nav.NavigateTo($"/night/{round.ShareCode}/swipe");
+                    return;
+                default:
+                    throw new InvalidOperationException("Join the gathering before taking part.");
+            }
+            _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException or HttpRequestException or TaskCanceledException or System.Xml.XmlException)
+        {
+            _error = ex is HttpRequestException or TaskCanceledException or System.Xml.XmlException
+                ? "Couldn't load this game from BoardGameGeek. Try again, or add its name manually."
+                : ex.Message;
+        }
+    }
+
+    private RenderFragment PickerState => @<text>
+        <input type="hidden" name="Form.HasPickerState" value="true" />
+        <input type="hidden" name="Form.LibraryId" value="@LibraryId" />
+        <input type="hidden" name="Form.BrowseSource" value="@ActiveSource" />
+        <input type="hidden" name="Form.SearchQuery" value="@SearchQuery" />
+        <input type="hidden" name="Form.Players" value="@Players" />
+        <input type="hidden" name="Form.MaxMinutes" value="@MaxMinutes" />
+    </text>;
+
+    private string SectionUrl(string section) => $"{Nav.Uri.Split('#')[0]}#{section}";
+
+    private string ActiveSource => BrowseSource == "search" || LibraryId is null ? "search" : "library";
+    private bool HasBrowseSource => ActiveSource == "search" ? !string.IsNullOrWhiteSpace(SearchQuery) : LibraryId is not null;
+
+    private bool IsAvailable(BggCandidateGame game)
+    {
+        if (_gathering!.Games.Any(g => g.BggGameId == game.BggGameId || string.Equals(g.Name.Trim(), game.Name.Trim(), StringComparison.OrdinalIgnoreCase))) return false;
+        if (int.TryParse(Players, out var players) && players > 0 && (game.MinPlayers is null || game.MaxPlayers is null || game.MinPlayers > players || game.MaxPlayers < players)) return false;
+        if (int.TryParse(MaxMinutes, out var minutes) && minutes > 0 && (game.MaxPlayTimeMinutes is null || game.MaxPlayTimeMinutes > minutes)) return false;
+        return true;
+    }
+
+    private static string FormatRange(int? min, int? max)
+        => min is null && max is null ? "?" : min == max ? min.ToString()! : $"{min?.ToString() ?? "?"}–{max?.ToString() ?? "?"}";
+
+    private string MemberName(Guid id) => _gathering?.Members.FirstOrDefault(m => m.Id == id)?.DisplayName ?? "Someone";
+    private static string NewToken() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    private void SetMemberCookie() => HttpContext!.Response.Cookies.Append(CookieName, _memberToken!, new CookieOptions
+    {
+        HttpOnly = true, Secure = HttpContext.Request.IsHttps, IsEssential = true,
+        SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromDays(60), Path = "/"
+    });
+
+    public sealed class GatheringForm
+    {
+        public string? Action { get; set; }
+        public bool HasPickerState { get; set; }
+        public Guid? LibraryId { get; set; }
+        public string? BrowseSource { get; set; }
+        public string? SearchQuery { get; set; }
+        public string? Players { get; set; }
+        public string? MaxMinutes { get; set; }
+        public string? DisplayName { get; set; }
+        public string? GameName { get; set; }
+        public int? BggGameId { get; set; }
+        public Guid? GameId { get; set; }
+        public Guid? BringerMemberId { get; set; }
+        public string? VoteName { get; set; }
+        public List<Guid>? GameIds { get; set; }
+        public Guid? RoundId { get; set; }
+    }
+}

@@ -1,0 +1,62 @@
+@page "/gatherings/create"
+@using DesliderClaude.Core.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IGatheringService Gatherings
+@inject NavigationManager Nav
+
+<PageTitle>Plan a gathering — DesliderClaude</PageTitle>
+
+<div class="gathering-create">
+    <a class="back-link" href="/">← Your table</a>
+    <section class="intro">
+        <span class="eyebrow">Good company. Great games.</span>
+        <h1>A whole weekend<br />of possibilities.</h1>
+        <p>Bring your people together. Decide what to bring now, and what to play when you're there.</p>
+    </section>
+    <div class="setup-card">
+        <span class="step-label">Start with a name</span>
+        <form method="post" @formname="create-gathering" @onsubmit="CreateAsync">
+            <AntiforgeryToken />
+            <label for="gathering-name">What shall we call it?</label>
+            <input id="gathering-name" name="Form.Name" value="@Form?.Name" placeholder="Cabin weekend" maxlength="200" required autofocus />
+            <p class="hint">No schedule to fill in. You can start adding games straight away.</p>
+            @if (_error is not null)
+            {
+                <p class="text-danger" role="alert">@_error</p>
+            }
+            <button class="btn btn-primary" type="submit">Create gathering →</button>
+        </form>
+    </div>
+    <ol class="preview-steps" aria-label="How a gathering works">
+        <li><span>01</span><div><strong>Make room for everyone's favourites</strong><p>Share one link. Friends suggest games and show interest.</p></div></li>
+        <li><span>02</span><div><strong>Pack a good mix</strong><p>Agree on a bring list and who brings each game.</p></div></li>
+        <li><span>03</span><div><strong>Find your next game</strong><p>Start fresh votes during the gathering and keep track of what you played.</p></div></li>
+    </ol>
+</div>
+
+@code {
+    [CascadingParameter] public Task<AuthenticationState>? AuthState { get; set; }
+    [SupplyParameterFromForm] public CreateGatheringForm? Form { get; set; }
+    private string? _error;
+
+    private async Task CreateAsync()
+    {
+        var userId = AuthState is null ? null : (await AuthState).User.GetUserId();
+        if (userId is null) return;
+        try
+        {
+            var gathering = await Gatherings.CreateAsync(Form?.Name ?? string.Empty, userId.Value);
+            Nav.NavigateTo($"/gathering/{gathering.ShareCode}");
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    public sealed class CreateGatheringForm
+    {
+        public string Name { get; set; } = string.Empty;
+    }
+}

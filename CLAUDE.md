@@ -196,3 +196,30 @@ DesliderClaude.slnx
 - Sample data: share code `sample-night`, three voters (Alice, Bob, Cara), six games, a mix of pre-swiped votes.
 - Voter flow live: `/night/{shareCode}` join (sets per-Night cookie), `/night/{shareCode}/swipe` **continuous** yes/no loop with weighted-random next-game selection, `/night/{shareCode}/ranking` meta-refresh live standings, `/night/{shareCode}/winner` celebratory top-pick view. All static SSR — swipe uses form POSTs + Blazor enhanced navigation so the transitions feel smooth without full reloads.
 - Swipe gesture: pointer-based drag (translate + rotate, velocity fling), HUD-stamp overlays, enter/exit animations re-inited on `Blazor.enhancedload`. Buttons remain as the primary/a11y path. `wwwroot/swipe.js` is the whole implementation.
+
+
+### 2026-10-27 — Night setup redesign and gatherings
+
+- Home offers separate game-night and gathering entry points, with a shared dark tabletop visual theme. Night setup starts with games and omits the date. Browsing a library starts with no games chosen; tapping an available game adds it to the separate “Games for this night” list. Removing a library game returns it to the browser. Player-count/duration filters narrow the available library without changing the chosen list. Enhanced form submissions preserve page position. Existing stored dates remain intact.
+- `/gatherings/create` requires sign-in. `/gathering/{shareCode}` is the shared gathering: join once, suggest games manually or from an owned BGG library, express interest, and view the bring list. Host identity comes from the signed-in creator; only the host confirms games, assigns bringers, starts votes, and records actual plays.
+- Gathering membership uses a per-gathering 60-day HttpOnly cookie. Member credentials never appear in public gathering DTOs. Anonymous membership currently depends on retaining this cookie.
+- Gatherings keep independent play votes as existing `GameNight` rows with nullable `GatheringId`. Round games link back through nullable `GatheringGameId`. Only confirmed bring-list games can enter a round; at least two distinct games are required. Existing standalone nights keep working.
+- Gathering interest is separate from round swipes. Recording an actual play appends history without changing vote results or closing a vote. Previously played games start unchecked for the next vote and can be selected for a repeat.
+- New Core entry point: `IGatheringService`; Data implements scoped membership, host checks, game membership validation, and safe gathering projections. `AddGatherings` is an additive EF migration.
+
+
+### 2026-10-28 — Aspire 13.6.4
+
+- Updated AppHost SDK from 13.2.2 to stable 13.6.4. Aspire now requires MessagePack 2.5.307 itself, so the direct workaround reference is no longer needed.
+- Removed `ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS` from both launch profiles, restoring dashboard authentication. Removed `ASPIRE_DASHBOARD_MCP_ENDPOINT_URL`, which stopped being supported in Aspire 13.3.
+- AppHost resource wiring and the shared SQLite database path are unchanged. No Project v2 migration or agent/MCP configuration was added.
+- Enabled the recommended CLI bundle. Local verification: all 26 tests pass, clean AppHost build, and both resources healthy during an isolated run. This machine's personal Aspire launcher supplies the working .NET root; the standard bundle is initialized under `~/.aspire`. No machine-specific paths were added to the project configuration.
+
+
+### 2026-10-28 — Shared game-picking behavior and BGG lookup
+
+- Night setup and gatherings use explicit tap-to-add game cards. Browsing or filtering a source never adds games automatically. Night setup has a separate chosen list; gatherings add choices to the existing shared suggestions before the host confirms the bring list.
+- Both flows can search BGG by name without a saved import, using the server's configured `Bgg:ApiToken`. Search results offer metadata and links to BGG. Manual entry remains available when lookup fails. Public BGG search works for joined gathering guests; saved library access remains restricted to the signed-in owner.
+- Gathering members can remove their own unused suggestions; the signed-in host can also remove them. Confirmed games and games used by a round or played history cannot be deleted through this action. Browser filtering does not change suggestions, bring assignments, or voting history.
+
+- Gathering browsing/search/filter controls use enhanced POSTs, carrying picker context in encoded hidden form fields across actions. Legacy query URLs still initialize that context on first load. Section links use the current gathering URL plus fragment because bare fragment links resolve against the app's root `<base>` and can navigate away from the gathering.

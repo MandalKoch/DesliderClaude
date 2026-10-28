@@ -4,11 +4,9 @@
 
 ### *Swipe. Rank. Play.*
 
-**The async way to decide which boardgame your group plays tonight.**
+**Choose what to play tonight, and what to bring for a weekend together.**
 
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
-![WebAssembly](https://img.shields.io/badge/WebAssembly-Ready-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)
-![PWA](https://img.shields.io/badge/PWA-Installable-FF6F00?style=for-the-badge&logo=pwa&logoColor=white)
 ![Status](https://img.shields.io/badge/status-🚧%20in%20progress-yellow?style=for-the-badge)
 
 </div>
@@ -27,21 +25,19 @@ Not a review site. Not a rating service. Just: *"of these 12 games, which do we 
 
 ## 🚀 How it works
 
-1. 🎟️ **Host creates a Game Night** — pick the candidate games, get a shareable link.
-2. 👋 **Friends join from the link** — just a display name, no account.
-3. 👉👈 **Everyone swipes at their own pace** — yes or no, change your mind any time.
-4. 📊 **Live ranking** — anyone with the link sees the current leaderboard.
-5. 🔒 **Host closes voting** — the top game wins. Play it tonight.
+**Playing tonight?** Start a game night, choose games from your collection or add them by name, and share the voting link. Friends join with a display name and vote yes or no. They can change their votes until the host closes voting.
 
-Install it to your home screen and it feels like a native app — no app store detour.
+**Planning a weekend?** Create a gathering and share one invitation. Everyone can suggest games and show interest. The host confirms a bring list and assigns who brings each game. When you are together, start fresh game votes from that list and record what you actually played. Repeat votes keep their own results, and played games remain available for another go.
+
+No date is required. Browse saved BoardGameGeek collections and GeekLists, or search BGG by name. Tap a game to add it to your night or gathering; manual entry remains available.
 
 ---
 
 ## 🛠️ Built with
 
-- ⚡ **.NET 10** on the server
-- 🖥️ **Blazor WebAssembly** for snappy, native-feel swiping in the browser
-- 📱 **Progressive Web App** — add to home screen, works great on mobile
+- **.NET 10** and **Blazor**, with server-rendered pages and touch-friendly voting
+- **SQLite** for game nights, gatherings, and voting history
+- **BoardGameGeek** imports for saved game libraries
 
 ---
 
@@ -50,6 +46,7 @@ Install it to your home screen and it feels like a native app — no app store d
 Built on the shoulders of people whose work made this better:
 
 - ✨ **Swipe gesture polish** — the `emil-design-eng` Claude Code skill, distilling the design-engineering philosophy of [Emil Kowalski](https://animations.dev/). Every scale, easing curve, and fling threshold traces back to his course.
+- **Game metadata and covers** — [BoardGameGeek XML API](https://boardgamegeek.com/wiki/page/BGG_XML_API2).
 - 🔑 **Memorable share codes** (`autumn-frog-1234`) — generated with [Haikunator](https://github.com/Atrox/haikunator) by Atrox.
 
 ---

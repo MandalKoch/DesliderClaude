@@ -8,6 +8,11 @@
 
 <PageTitle>Host · @(_night?.Name ?? "Game Night")</PageTitle>
 
+@if (_night?.Gathering is { } gathering)
+{
+    <a class="gathering-back" href="/gathering/@gathering.ShareCode">← @gathering.Name · Bring list &amp; played games</a>
+}
+
 @if (_night is null)
 {
     <h1>Not found.</h1>

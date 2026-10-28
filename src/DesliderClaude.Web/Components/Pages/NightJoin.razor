@@ -3,6 +3,7 @@
 @using DesliderClaude.Core.Services
 @inject IGameNightService GameNights
 @inject IVotingService Voting
+@inject IGatheringService Gatherings
 @inject NavigationManager Nav
 
 <PageTitle>@(_night?.Name ?? "Game Night") — DesliderClaude</PageTitle>
@@ -25,15 +26,15 @@ else
 {
     <span class="kicker">Game Night · @_night.Games.Count candidates</span>
     <h1>@_night.Name</h1>
-    <p class="subtle">Pick a callsign to start swiping.</p>
+    <p class="subtle">Enter your name to vote. No account needed.</p>
 
     <div class="form-card">
         <form method="post" @formname="join" @onsubmit="JoinAsync">
             <AntiforgeryToken />
-            <label for="display-name">Your callsign</label>
+            <label for="display-name">Your name</label>
             <input id="display-name" name="Form.DisplayName" value="@(Form?.DisplayName ?? _prefill)" maxlength="40" autocomplete="nickname" required autofocus />
             <div class="btn-row">
-                <button type="submit" class="btn btn-primary">Enter the deck →</button>
+                <button type="submit" class="btn btn-primary">Join the vote →</button>
             </div>
         </form>
     </div>
@@ -68,6 +69,20 @@ else
             var progress = await Voting.GetProgressAsync(existingVoterToken);
             if (progress?.GameNightId == _night.Id)
             {
+                Nav.NavigateTo($"/night/{ShareCode}/swipe");
+                return;
+            }
+        }
+
+        // Gathering members keep their identity across each play vote.
+        if (_night.Gathering is { } gathering)
+        {
+            var memberToken = HttpContext.Request.Cookies[$"deslider-gathering-{gathering.ShareCode}"];
+            var member = string.IsNullOrEmpty(memberToken) ? null : await Gatherings.GetMemberAsync(gathering.Id, memberToken);
+            if (member is not null)
+            {
+                var token = EnsureVoterToken(voterCookieName, existingVoterToken);
+                await Voting.JoinAsync(_night.Id, member.DisplayName, token, member.UserId);
                 Nav.NavigateTo($"/night/{ShareCode}/swipe");
                 return;
             }

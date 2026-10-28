@@ -10,30 +10,65 @@
 
 <PageTitle>Create Game Night — DesliderClaude</PageTitle>
 
-<section class="hero">
+<div class="night-builder">
+<section class="hero setup-hero">
     <span class="kicker">New game night</span>
-    <h1 class="hero-title">Set the table.</h1>
+    <h1 class="hero-title">A good night starts<br />with a few good games.</h1>
     <p class="hero-lede">
-        Start empty. Add games one by one, or pull in a whole BGG library.
-        Filters narrow the BGG list — games you added by hand always stay visible.
+        Pick what’s on the table. Share one link. Let everyone have a say.
     </p>
 </section>
 
-<div class="form-card">
-    <form method="post" @formname="create-night" @onsubmit="HandleAsync">
+<div class="form-card setup-card">
+    <form method="post" @formname="create-night" @onsubmit="HandleAsync" data-enhance>
         <AntiforgeryToken />
 
-        <label for="night-name">Night name</label>
-        <input id="night-name" name="Form.Name" value="@(string.IsNullOrEmpty(Form?.Name) ? _defaultName : Form!.Name)"
-               maxlength="200" placeholder="Friday boardgames" autocomplete="off" required autofocus />
-
-        <label for="target-date">Target date <span class="subtle">(optional)</span></label>
-        <input id="target-date" name="Form.TargetDate" value="@(string.IsNullOrEmpty(Form?.TargetDate) ? _defaultDate : Form!.TargetDate)" type="date" />
-
-        <hr />
+        <div class="setup-heading"><span class="step-number">01</span><div><h2>Choose your games</h2><p>Browse your collection and add only the games you want to offer.</p></div></div>
 
         <fieldset class="fieldset">
-            <legend>Add games</legend>
+            <legend class="visually-hidden">Add games</legend>
+
+            <section class="bgg-search" aria-labelledby="bgg-search-title">
+                <h2 id="bgg-search-title">Find a game on BGG</h2>
+                <p class="filter-help">Search for a title, then choose the game you mean. No library import needed.</p>
+                <label for="bgg-search">Game name on BGG</label>
+                <div class="inline-row">
+                    <input id="bgg-search" type="search" name="Form.SearchQuery" value="@Form?.SearchQuery" maxlength="100" placeholder="e.g. Cascadia" />
+                    <button type="submit" name="Form.Action" value="search-bgg" class="btn btn-ghost">Search BGG</button>
+                </div>
+                <p class="filter-help"><a href="https://boardgamegeek.com/browse/boardgame" target="_blank" rel="noopener noreferrer">Browse BoardGameGeek ↗</a></p>
+                @if (_searchError is not null)
+                {
+                    <p class="text-danger" role="alert">@_searchError</p>
+                }
+                @if (_searched)
+                {
+                    <input type="hidden" name="Form.Searched" value="true" />
+                    <div class="search-results-heading"><h3>BGG results</h3><button type="submit" name="Form.Action" value="clear-search" class="btn btn-ghost btn-sm">Clear search</button></div>
+                    @if (_searchResults.Count == 0 && _searchError is null)
+                    {
+                        <p class="filter-help" role="status">No games found. Try another title, browse BGG, or add a name below.</p>
+                    }
+                    <ul class="bgg-search-results">
+                        @foreach (var game in _searchResults)
+                        {
+                            var added = _candidates.Where((c, i) => _selected[i]).Any(c => c.BggGameId == game.BggGameId || string.Equals(c.Name, game.Name, StringComparison.OrdinalIgnoreCase));
+                            <li class="bgg-search-row">
+                                <button type="submit" name="Form.SearchGameId" value="@game.BggGameId" class="library-game unstyled" disabled="@added" aria-label="@($"Add {game.Name} from BGG")">
+                                    @if (!string.IsNullOrEmpty(game.ThumbnailUrl))
+                                    {
+                                        <img class="candidate-thumb" src="@game.ThumbnailUrl" alt="" referrerpolicy="no-referrer" loading="lazy" />
+                                    }
+                                    <span class="candidate-main"><span class="candidate-name">@game.Name</span><span class="candidate-meta">@FormatRange(game.MinPlayers, game.MaxPlayers) players · @FormatRange(game.MinPlayTimeMinutes, game.MaxPlayTimeMinutes) min · BGG #@game.BggGameId</span></span>
+                                    <span class="add-game-label" aria-hidden="true">@(added ? "Added ✓" : "＋ Add")</span>
+                                </button>
+                                <a class="bgg-detail-link" href="@($"https://boardgamegeek.com/boardgame/{game.BggGameId}")" target="_blank" rel="noopener noreferrer" aria-label="@($"Open {game.Name} on BGG")">Open on BGG ↗</a>
+                                <input type="hidden" name="Form.SearchResultIds" value="@game.BggGameId" />
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
 
             <label for="add-text">Add a single game</label>
             <div class="inline-row">
@@ -53,148 +88,140 @@
                             <option value="@imp.Id">@imp.Name — @imp.GameCount games</option>
                         }
                     </select>
-                    <button type="submit" name="Form.Action" value="add-import" class="btn btn-ghost">+ Add all</button>
+                    <button type="submit" name="Form.Action" value="add-import" class="btn btn-ghost">Browse library</button>
                 </div>
                 <p class="subtle" style="font-size: 0.75rem; margin-top: 4px;">
-                    Duplicates (same BGG game already in the table) are skipped.
+                    Browsing a library doesn’t add any games to your night. Pick them below.
                 </p>
             }
             else
             {
                 <p class="subtle" style="margin-top: var(--s-3);">
-                    No BGG libraries yet. <a href="/account/libraries">Import a geeklist →</a>
+                    Have a BoardGameGeek collection? <a href="/account/libraries">Connect your library →</a>
+                    You can also add games by name above.
                 </p>
             }
         </fieldset>
 
-        <fieldset class="fieldset">
-            <legend>Filter BGG games <span class="subtle">(applies on add — hand-added games always stay)</span></legend>
-            <div class="filter-grid">
-                <div>
-                    <label for="f-rec">Recommended for N players</label>
-                    <input id="f-rec" name="Form.RecommendedFor" type="number" min="1" max="20" value="@Form?.RecommendedFor" placeholder="e.g. 4" />
-                </div>
-                <div>
-                    <label for="f-players">Player count <span class="subtle">(min / max)</span></label>
-                    <div class="inline-row">
-                        <input id="f-players" name="Form.MinPlayers" type="number" min="1" max="99" value="@Form?.MinPlayers" placeholder="min" />
-                        <input name="Form.MaxPlayers" type="number" min="1" max="99" value="@Form?.MaxPlayers" placeholder="max" />
-                    </div>
-                </div>
-                <div>
-                    <label for="f-time">Play time min <span class="subtle">(min / max)</span></label>
-                    <div class="inline-row">
-                        <input id="f-time" name="Form.MinPlayTime" type="number" min="0" max="999" value="@Form?.MinPlayTime" placeholder="min" />
-                        <input name="Form.MaxPlayTime" type="number" min="0" max="999" value="@Form?.MaxPlayTime" placeholder="max" />
-                    </div>
-                </div>
-            </div>
-            <div class="btn-row" style="margin-top: var(--s-3);">
-                <button type="submit" name="Form.Action" value="filter" class="btn btn-ghost btn-sm">Apply filters</button>
-                <button type="submit" name="Form.Action" value="clear-filters" class="btn btn-ghost btn-sm">Clear</button>
-            </div>
-        </fieldset>
-
-        <div class="candidate-toolbar">
-            <span class="candidate-count">
-                <strong>@_selectedVisibleCount</strong> / @_visibleCount selected
-                @if (_candidates.Count != _visibleCount)
-                {
-                    <span class="subtle">(@(_candidates.Count - _visibleCount) hidden by filters)</span>
-                }
-            </span>
-            <div class="btn-row">
-                <button type="submit" name="Form.Action" value="select-all" class="btn btn-ghost btn-sm" disabled="@(_visibleCount == 0)">Select all visible</button>
-                <button type="submit" name="Form.Action" value="deselect-all" class="btn btn-ghost btn-sm" disabled="@(_visibleCount == 0)">Deselect all visible</button>
-            </div>
-        </div>
-
-        @if (_candidates.Count == 0)
-        {
-            <p class="empty">Nothing here yet. Add a game above or pull in a BGG library.</p>
-        }
-        else
-        {
-            <ul class="candidate-list">
-                @for (var i = 0; i < _candidates.Count; i++)
-                {
-                    var c = _candidates[i];
-                    var visible = IsVisible(c);
-                    var rowClass = (_selected[i], visible, c.IsManual) switch
+        <section class="night-shortlist" aria-labelledby="shortlist-title">
+            <div class="shortlist-heading"><h2 id="shortlist-title">Games for this night</h2><span class="candidate-count">@(_selected.Count(x => x) == 1 ? "1 game" : $"{_selected.Count(x => x)} games") in this night</span></div>
+            @if (!_selected.Any(x => x))
+            {
+                <div class="setup-empty"><span aria-hidden="true">＋</span><p>Your list starts empty. Add a game by name, or choose one from your library below.</p></div>
+            }
+            else
+            {
+                <ul class="shortlist">
+                    @for (var i = 0; i < _candidates.Count; i++)
                     {
-                        (true, true, true) => "is-selected is-manual",
-                        (true, true, false) => "is-selected",
-                        (false, true, _) => "is-unselected",
-                        _ => "is-hidden"
-                    };
-                    <li class="candidate-row @rowClass" hidden="@(!visible)">
-                        <label class="checkbox-row">
-                            <input type="checkbox" name="Form.SelectedIndexes" value="@i" checked="@_selected[i]" />
+                        if (!_selected[i]) continue;
+                        var c = _candidates[i];
+                        <li class="shortlist-row">
                             @if (!string.IsNullOrEmpty(c.ThumbnailUrl))
                             {
                                 <img class="candidate-thumb" src="@c.ThumbnailUrl" alt="" referrerpolicy="no-referrer" loading="lazy" />
                             }
-                            <span class="candidate-main">
-                                <span class="candidate-name">
-                                    @c.Name
-                                    @if (c.IsManual)
-                                    {
-                                        <span class="candidate-badge">manual</span>
-                                    }
-                                </span>
-                                @if (!c.IsManual)
-                                {
-                                    <span class="candidate-meta">
-                                        @if (c.MinPlayers is not null || c.MaxPlayers is not null)
-                                        {
-                                            <span>@(FormatRange(c.MinPlayers, c.MaxPlayers)) players</span>
-                                        }
-                                        @if (c.MinPlayTime is not null || c.MaxPlayTime is not null)
-                                        {
-                                            <span>· @(FormatRange(c.MinPlayTime, c.MaxPlayTime)) min</span>
-                                        }
-                                        @if (c.RecommendedFor.Count > 0)
-                                        {
-                                            <span>· rec @string.Join(",", c.RecommendedFor)</span>
-                                        }
-                                    </span>
-                                }
-                            </span>
-                        </label>
-                        <button type="submit" name="Form.RemoveIndex" value="@i" class="btn btn-ghost btn-sm" title="Remove from list">✕</button>
+                            <span class="candidate-main"><strong class="candidate-name">@c.Name</strong><span class="candidate-meta">@(c.IsManual ? "Added by you" : $"{FormatRange(c.MinPlayers, c.MaxPlayers)} players · {FormatRange(c.MinPlayTime, c.MaxPlayTime)} min")</span></span>
+                            <button type="submit" name="Form.RemoveIndex" value="@i" class="btn btn-ghost btn-sm" aria-label="@($"Remove {c.Name} from this night")">Remove</button>
+                        </li>
+                    }
+                </ul>
+            }
+            <p class="filter-help">Only games in this list will be offered for voting. Add at least two.</p>
+        </section>
 
-                        @* State carried across every POST. *@
-                        <input type="hidden" name="Form.CandNames" value="@c.Name" />
-                        <input type="hidden" name="Form.CandBggIds" value="@c.BggGameId" />
-                        <input type="hidden" name="Form.CandImages" value="@(c.ImageUrl ?? string.Empty)" />
-                        <input type="hidden" name="Form.CandThumbs" value="@(c.ThumbnailUrl ?? string.Empty)" />
-                        <input type="hidden" name="Form.CandManuals" value="@(c.IsManual ? "1" : "0")" />
-                        <input type="hidden" name="Form.CandMinP" value="@(c.MinPlayers?.ToString() ?? string.Empty)" />
-                        <input type="hidden" name="Form.CandMaxP" value="@(c.MaxPlayers?.ToString() ?? string.Empty)" />
-                        <input type="hidden" name="Form.CandMinT" value="@(c.MinPlayTime?.ToString() ?? string.Empty)" />
-                        <input type="hidden" name="Form.CandMaxT" value="@(c.MaxPlayTime?.ToString() ?? string.Empty)" />
-                        <input type="hidden" name="Form.CandRecs" value="@string.Join(",", c.RecommendedFor)" />
-                    </li>
+        @if (_candidates.Any(c => !c.IsManual))
+        {
+            <section class="library-browser" aria-labelledby="library-title">
+                <h2 id="library-title">Available games</h2>
+                <p class="filter-help">Tap a game to add it to your night.</p>
+                <details class="game-filters" open="@(!string.IsNullOrWhiteSpace(Form?.MinPlayers) || !string.IsNullOrWhiteSpace(Form?.MaxPlayTime))">
+                    <summary>Narrow it down <span class="subtle">optional</span></summary>
+                    <div class="filter-grid">
+                        <div>
+                            <label for="f-players">How many players?</label>
+                            <input id="f-players" name="Form.MinPlayers" type="number" min="1" max="99" value="@Form?.MinPlayers" placeholder="Any number" />
+                        </div>
+                        <div>
+                            <label for="f-time">Up to how many minutes?</label>
+                            <input id="f-time" name="Form.MaxPlayTime" type="number" min="1" max="999" value="@Form?.MaxPlayTime" placeholder="Any length" />
+                        </div>
+                    </div>
+                    <p class="subtle filter-help">Filters help you browse. Games already added to your night stay in your list above.</p>
+                    <div class="btn-row">
+                        <button type="submit" name="Form.Action" value="filter" class="btn btn-ghost btn-sm">Apply filters</button>
+                        <button type="submit" name="Form.Action" value="clear-filters" class="btn btn-ghost btn-sm">Clear filters</button>
+                    </div>
+                </details>
+                <p class="available-count">@_visibleCount games available</p>
+                @if (_visibleCount == 0)
+                {
+                    <p class="filter-help">No more games match these filters. Clear the filters to browse the rest of your library.</p>
                 }
-            </ul>
+                <ul class="candidate-list">
+                    @for (var i = 0; i < _candidates.Count; i++)
+                    {
+                        var c = _candidates[i];
+                        if (c.IsManual) continue;
+                        <li class="candidate-row" hidden="@(_selected[i] || !IsVisible(c))">
+                            <button type="submit" name="Form.AddIndex" value="@i" class="library-game unstyled" aria-label="@($"Add {c.Name} to this night")">
+                                @if (!string.IsNullOrEmpty(c.ThumbnailUrl))
+                                {
+                                    <img class="candidate-thumb" src="@c.ThumbnailUrl" alt="" referrerpolicy="no-referrer" loading="lazy" />
+                                }
+                                <span class="candidate-main"><span class="candidate-name">@c.Name</span><span class="candidate-meta">@FormatRange(c.MinPlayers, c.MaxPlayers) players · @FormatRange(c.MinPlayTime, c.MaxPlayTime) min</span></span>
+                                <span class="add-game-label" aria-hidden="true">＋ Add</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </section>
         }
 
-        <div class="btn-row" style="margin-top: var(--s-5);">
-            <a class="btn btn-ghost" href="/">← Cancel</a>
-            <button type="submit" name="Form.Action" value="create" class="btn btn-primary" disabled="@(_candidates.Count(ToKeep) < 2)">
-                Create night →
-            </button>
+        @for (var i = 0; i < _candidates.Count; i++)
+        {
+            var c = _candidates[i];
+            @* Keep the library and shortlist state across enhanced form posts. *@
+            @if (_selected[i])
+            {
+                <input type="hidden" name="Form.SelectedIndexes" value="@i" />
+            }
+            <input type="hidden" name="Form.CandNames" value="@c.Name" />
+            <input type="hidden" name="Form.CandBggIds" value="@c.BggGameId" />
+            <input type="hidden" name="Form.CandImages" value="@(c.ImageUrl ?? string.Empty)" />
+            <input type="hidden" name="Form.CandThumbs" value="@(c.ThumbnailUrl ?? string.Empty)" />
+            <input type="hidden" name="Form.CandManuals" value="@(c.IsManual ? "1" : "0")" />
+            <input type="hidden" name="Form.CandMinP" value="@(c.MinPlayers?.ToString() ?? string.Empty)" />
+            <input type="hidden" name="Form.CandMaxP" value="@(c.MaxPlayers?.ToString() ?? string.Empty)" />
+            <input type="hidden" name="Form.CandMinT" value="@(c.MinPlayTime?.ToString() ?? string.Empty)" />
+            <input type="hidden" name="Form.CandMaxT" value="@(c.MaxPlayTime?.ToString() ?? string.Empty)" />
+            <input type="hidden" name="Form.CandRecs" value="@string.Join(",", c.RecommendedFor)" />
+        }
+
+        <div class="night-details">
+            <div class="setup-heading"><span class="step-number">02</span><div><h2>Make it yours</h2><p>A name helps friends find the right night.</p></div></div>
+            <label for="night-name">Night name</label>
+            <input id="night-name" name="Form.Name" value="@(string.IsNullOrEmpty(Form?.Name) ? _defaultName : Form!.Name)"
+                   maxlength="200" placeholder="Friday boardgames" autocomplete="off" required />
         </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <p class="text-danger" role="alert">@_error</p>
+        }
+        @if (!string.IsNullOrEmpty(_notice))
+        {
+            <p class="text-ok" role="status">@_notice</p>
+        }
+
+        <div class="create-bar">
+            <div><strong>@_selected.Count(x => x) games selected</strong><span>Next: invite your friends. No account needed to vote.</span></div>
+            <button type="submit" name="Form.Action" value="create" class="btn btn-primary" disabled="@(_selected.Count(x => x) < 2)">Create night →</button>
+        </div>
+        <a class="setup-back" href="/">Back to your nights</a>
     </form>
 
-    @if (!string.IsNullOrEmpty(_error))
-    {
-        <p class="text-danger">@_error</p>
-    }
-    @if (!string.IsNullOrEmpty(_notice))
-    {
-        <p class="text-ok">@_notice</p>
-    }
+</div>
 </div>
 
 @code {
@@ -206,16 +233,16 @@
     private List<Candidate> _candidates = new();
     private List<bool> _selected = new();
     private int _visibleCount;
-    private int _selectedVisibleCount;
     private string? _error;
     private string? _notice;
     private string _defaultName = string.Empty;
-    private string _defaultDate = string.Empty;
+    private IReadOnlyList<BggCandidateGame> _searchResults = Array.Empty<BggCandidateGame>();
+    private bool _searched;
+    private string? _searchError;
 
     protected override async Task OnInitializedAsync()
     {
         _defaultName = NightNames.Generate();
-        _defaultDate = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
 
         var uid = await GetUserIdAsync();
         if (uid is not null)
@@ -224,6 +251,21 @@
         }
 
         RehydrateCandidatesFromForm();
+        _searched = Form?.Searched == true;
+        if (_searched)
+        {
+            var results = new List<BggCandidateGame>();
+            try
+            {
+                foreach (var id in (Form?.SearchResultIds ?? Array.Empty<int>()).Where(id => id > 0).Distinct().Take(20))
+                    results.Add(await Bgg.GetGameAsync(id));
+                _searchResults = results;
+            }
+            catch (Exception ex) when (IsBggFailure(ex))
+            {
+                _searchError = "BGG results couldn’t be loaded. Search again, or add a game by name below.";
+            }
+        }
         RecountVisibility();
     }
 
@@ -234,18 +276,55 @@
         var uid = await GetUserIdAsync();
         if (uid is null) return;
 
-        // Row-level remove takes precedence over any Form.Action.
+        if (Form?.SearchGameId is int searchId)
+        {
+            try
+            {
+                AddBggCandidate(await Bgg.GetGameAsync(searchId));
+            }
+            catch (Exception ex) when (IsBggFailure(ex))
+            {
+                _searchError = "That BGG game couldn’t be loaded. Try another result, or add its name below.";
+            }
+            RecountVisibility();
+            return;
+        }
+
+        // Individual game actions take precedence over the other form buttons.
         if (!string.IsNullOrEmpty(Form?.RemoveIndex) && int.TryParse(Form.RemoveIndex, out var ri)
             && ri >= 0 && ri < _candidates.Count)
         {
-            _candidates.RemoveAt(ri);
-            _selected.RemoveAt(ri);
+            if (_candidates[ri].IsManual)
+            {
+                _candidates.RemoveAt(ri);
+                _selected.RemoveAt(ri);
+            }
+            else
+            {
+                _selected[ri] = false;
+            }
+            RecountVisibility();
+            return;
+        }
+
+        if (int.TryParse(Form?.AddIndex, out var addIndex) && addIndex >= 0 && addIndex < _candidates.Count)
+        {
+            _selected[addIndex] = true;
             RecountVisibility();
             return;
         }
 
         switch (Form?.Action)
         {
+            case "search-bgg":
+                await SearchBggAsync();
+                break;
+            case "clear-search":
+                _searchResults = Array.Empty<BggCandidateGame>();
+                _searched = false;
+                _searchError = null;
+                if (Form is not null) Form.SearchQuery = string.Empty;
+                break;
             case "add-text":
                 AddManual(Form.NewTextGame);
                 if (Form is not null) Form.NewTextGame = string.Empty;
@@ -257,20 +336,14 @@
                     if (Form is not null) Form.ImportToAdd = string.Empty;
                 }
                 break;
-            case "select-all":
-                SetVisibleSelection(true);
-                break;
-            case "deselect-all":
-                SetVisibleSelection(false);
-                break;
             case "clear-filters":
                 if (Form is not null)
                 {
-                    Form.MinPlayers = Form.MaxPlayers = Form.MinPlayTime = Form.MaxPlayTime = Form.RecommendedFor = string.Empty;
+                    Form.MinPlayers = Form.MaxPlayTime = string.Empty;
                 }
                 break;
             case "filter":
-                ApplyFiltersInPlace();
+                _notice = "Library filters updated. Your night’s games are unchanged.";
                 break;
             case "create":
                 await CreateAsync(uid.Value);
@@ -296,7 +369,16 @@
         var added = 0;
         foreach (var n in names)
         {
-            if (existing.Contains(n)) continue;
+            if (existing.Contains(n))
+            {
+                var index = _candidates.FindIndex(c => string.Equals(c.Name, n, StringComparison.OrdinalIgnoreCase));
+                if (!_selected[index])
+                {
+                    _selected[index] = true;
+                    added++;
+                }
+                continue;
+            }
             _candidates.Add(new Candidate(n, 0, null, null, true, null, null, null, null, Array.Empty<int>()));
             _selected.Add(true);
             existing.Add(n);
@@ -318,11 +400,11 @@
         }
 
         var knownBgg = _candidates.Where(c => c.BggGameId > 0).Select(c => c.BggGameId).ToHashSet();
+        var knownNames = _candidates.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var added = 0;
-        var skippedByFilter = 0;
         foreach (var g in games)
         {
-            if (knownBgg.Contains(g.BggGameId)) continue;
+            if (knownBgg.Contains(g.BggGameId) || knownNames.Contains(g.Name)) continue;
             var recs = g.RecommendedPlayerCounts
                 .Where(v => v.Kind != BggPlayerCountKind.NotRecommended)
                 .Select(v => v.Count)
@@ -336,69 +418,16 @@
                 g.MinPlayers, g.MaxPlayers, g.MinPlayTimeMinutes, g.MaxPlayTimeMinutes,
                 recs);
 
-            // Active filters apply at add time too — no point loading a 200-game
-            // library into the form when the user only wants 4-player games.
-            if (!IsVisible(candidate))
-            {
-                skippedByFilter++;
-                continue;
-            }
-
             _candidates.Add(candidate);
-            _selected.Add(true);
+            _selected.Add(false);
             knownBgg.Add(g.BggGameId);
+            knownNames.Add(g.Name);
             added++;
         }
 
-        if (added == 0 && skippedByFilter > 0)
-        {
-            _notice = $"No games matched the filter ({skippedByFilter} skipped). Loosen the filter and try again.";
-        }
-        else if (added == 0)
-        {
-            _notice = "Every game in that library is already on the list.";
-        }
-        else
-        {
-            var tail = skippedByFilter > 0 ? $" ({skippedByFilter} skipped by filter)" : "";
-            _notice = added == 1 ? $"Added 1 game.{tail}" : $"Added {added} games.{tail}";
-        }
-    }
-
-    private void ApplyFiltersInPlace()
-    {
-        // Filtering is destructive: non-matching BGG candidates leave the list
-        // entirely. Manual rows always survive (per product rule). Survivors
-        // are auto-selected — the user just said "I want exactly these".
-        var keep = new List<Candidate>(_candidates.Count);
-        var keepSelected = new List<bool>(_candidates.Count);
-        var dropped = 0;
-        for (var i = 0; i < _candidates.Count; i++)
-        {
-            if (IsVisible(_candidates[i]))
-            {
-                keep.Add(_candidates[i]);
-                keepSelected.Add(true);
-            }
-            else
-            {
-                dropped++;
-            }
-        }
-        _candidates = keep;
-        _selected = keepSelected;
-        if (dropped > 0)
-        {
-            _notice = dropped == 1 ? "Removed 1 game that didn't match." : $"Removed {dropped} games that didn't match.";
-        }
-    }
-
-    private void SetVisibleSelection(bool value)
-    {
-        for (var i = 0; i < _candidates.Count; i++)
-        {
-            if (IsVisible(_candidates[i])) _selected[i] = value;
-        }
+        _notice = added == 0
+            ? "That library is ready to browse below."
+            : $"Ready to browse {added} games. Add the ones you want to play.";
     }
 
     private async Task CreateAsync(Guid userId)
@@ -415,7 +444,23 @@
         {
             if (!_selected[i]) continue;
             var c = _candidates[i];
-            chosen.Add(new GameCandidate(c.Name, c.BggGameId == 0 ? null : c.BggGameId, c.ImageUrl, c.ThumbnailUrl));
+            if (c.BggGameId > 0)
+            {
+                try
+                {
+                    var game = await Bgg.GetGameAsync(c.BggGameId);
+                    chosen.Add(new GameCandidate(game.Name, game.BggGameId, game.ImageUrl, game.ThumbnailUrl));
+                }
+                catch (Exception ex) when (IsBggFailure(ex))
+                {
+                    _error = "A BGG game couldn’t be loaded. Remove it and try adding it again, or add its name manually.";
+                    return;
+                }
+            }
+            else
+            {
+                chosen.Add(new GameCandidate(c.Name, null, c.ImageUrl, c.ThumbnailUrl));
+            }
         }
 
         chosen = chosen
@@ -429,54 +474,72 @@
             return;
         }
 
-        DateOnly? targetDate = null;
-        if (!string.IsNullOrWhiteSpace(Form?.TargetDate) && DateOnly.TryParse(Form.TargetDate, out var parsed))
-        {
-            targetDate = parsed;
-        }
-
-        var night = await GameNights.CreateAsync(name, targetDate, chosen, userId);
+        var night = await GameNights.CreateAsync(name, null, chosen, userId);
         Nav.NavigateTo($"/night/{night.ShareCode}/host");
     }
+
+    private async Task SearchBggAsync()
+    {
+        _searched = true;
+        _searchError = null;
+        _searchResults = Array.Empty<BggCandidateGame>();
+        var query = Form?.SearchQuery?.Trim() ?? string.Empty;
+        if (query.Length < 2 || query.Length > 100)
+        {
+            _searchError = "Enter a game title between 2 and 100 characters. You can also add a name below.";
+            return;
+        }
+        try
+        {
+            _searchResults = await Bgg.SearchGamesAsync(query);
+        }
+        catch (Exception ex) when (IsBggFailure(ex))
+        {
+            _searchError = "BGG search is unavailable right now. Try again, or add a game by name below.";
+        }
+    }
+
+    private void AddBggCandidate(BggCandidateGame game)
+    {
+        var candidate = new Candidate(game.Name, game.BggGameId, game.ImageUrl, game.ThumbnailUrl, false,
+            game.MinPlayers, game.MaxPlayers, game.MinPlayTimeMinutes, game.MaxPlayTimeMinutes,
+            game.RecommendedPlayerCounts.Where(v => v.Kind != BggPlayerCountKind.NotRecommended).Select(v => v.Count).Distinct().Order().ToArray());
+        var index = _candidates.FindIndex(c => c.BggGameId == game.BggGameId || string.Equals(c.Name, game.Name, StringComparison.OrdinalIgnoreCase));
+        if (index < 0)
+        {
+            _candidates.Add(candidate);
+            _selected.Add(true);
+        }
+        else
+        {
+            _candidates[index] = candidate;
+            _selected[index] = true;
+        }
+    }
+
+    private static bool IsBggFailure(Exception ex) => ex is InvalidOperationException or ArgumentException or HttpRequestException or TaskCanceledException or System.Xml.XmlException;
 
     private bool IsVisible(Candidate c)
     {
         if (c.IsManual) return true; // Always show manual rows — per product rule.
         if (Form is null) return true;
 
-        if (int.TryParse(Form.MinPlayers, out var minP) && minP > 0)
-            if (c.MaxPlayers is null || c.MaxPlayers < minP) return false;
+        if (int.TryParse(Form.MinPlayers, out var players) && players > 0)
+            if (c.MinPlayers is null || c.MaxPlayers is null || c.MinPlayers > players || c.MaxPlayers < players) return false;
 
-        if (int.TryParse(Form.MaxPlayers, out var maxP) && maxP > 0)
-            if (c.MinPlayers is null || c.MinPlayers > maxP) return false;
-
-        if (int.TryParse(Form.MinPlayTime, out var minT) && minT > 0)
-            if (c.MaxPlayTime is null || c.MaxPlayTime < minT) return false;
-
-        if (int.TryParse(Form.MaxPlayTime, out var maxT) && maxT > 0)
-            if (c.MinPlayTime is null || c.MinPlayTime > maxT) return false;
-
-        if (int.TryParse(Form.RecommendedFor, out var recFor) && recFor > 0)
-            if (!c.RecommendedFor.Contains(recFor)) return false;
+        if (int.TryParse(Form.MaxPlayTime, out var minutes) && minutes > 0)
+            if (c.MaxPlayTime is null || c.MaxPlayTime > minutes) return false;
 
         return true;
-    }
-
-    private bool ToKeep(Candidate c)
-    {
-        var i = _candidates.IndexOf(c);
-        return i >= 0 && _selected[i];
     }
 
     private void RecountVisibility()
     {
         _visibleCount = 0;
-        _selectedVisibleCount = 0;
         for (var i = 0; i < _candidates.Count; i++)
         {
-            if (!IsVisible(_candidates[i])) continue;
+            if (_selected[i] || _candidates[i].IsManual || !IsVisible(_candidates[i])) continue;
             _visibleCount++;
-            if (_selected[i]) _selectedVisibleCount++;
         }
     }
 
@@ -555,18 +618,19 @@
     public sealed class CreateFormModel
     {
         public string Name { get; set; } = string.Empty;
-        public string TargetDate { get; set; } = string.Empty;
         public string Action { get; set; } = string.Empty;
         public string RemoveIndex { get; set; } = string.Empty;
+        public string AddIndex { get; set; } = string.Empty;
 
         public string NewTextGame { get; set; } = string.Empty;
         public string ImportToAdd { get; set; } = string.Empty;
+        public string SearchQuery { get; set; } = string.Empty;
+        public bool Searched { get; set; }
+        public int? SearchGameId { get; set; }
+        public int[]? SearchResultIds { get; set; }
 
         public string MinPlayers { get; set; } = string.Empty;
-        public string MaxPlayers { get; set; } = string.Empty;
-        public string MinPlayTime { get; set; } = string.Empty;
         public string MaxPlayTime { get; set; } = string.Empty;
-        public string RecommendedFor { get; set; } = string.Empty;
 
         public string[]? SelectedIndexes { get; set; }
         public string[]? CandNames { get; set; }
