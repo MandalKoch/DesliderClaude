@@ -3,6 +3,7 @@ using DesliderClaude.Core.Services;
 using DesliderClaude.Core.Services.Imps;
 using DesliderClaude.Data.Services.Imps;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
@@ -21,11 +22,13 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<DesliderClaudeDbContext>(opt => opt.UseSqlite(connectionString));
         services.AddSingleton<IShareCodeGenerator, HaikunatorShareCodeGenerator>();
         services.AddSingleton<INightNameGenerator, RandomNightNameGenerator>();
+        services.AddScoped<IGatheringService, GatheringService>();
         services.AddScoped<IGameNightService, GameNightService>();
         services.AddScoped<IVotingService, VotingService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IBggImportService, BggImportService>();
+        services.AddSingleton(_ => new MemoryCache(new MemoryCacheOptions { SizeLimit = 128 }));
 
         if (configuration is not null)
         {

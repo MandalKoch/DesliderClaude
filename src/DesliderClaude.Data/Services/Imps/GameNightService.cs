@@ -85,6 +85,7 @@ internal sealed partial class GameNightService : IGameNightService
 
     public Task<GameNight?> GetByShareCodeAsync(string shareCode, CancellationToken ct = default)
         => _db.GameNights
+            .Include(n => n.Gathering)
             .Include(n => n.Games)
             .FirstOrDefaultAsync(n => n.ShareCode == shareCode, ct);
 

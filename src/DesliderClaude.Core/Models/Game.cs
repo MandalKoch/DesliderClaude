@@ -4,6 +4,8 @@ public class Game
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
     public Guid GameNightId { get; set; }
+    public Guid? GatheringGameId { get; set; }
+    public GatheringGame? GatheringGame { get; set; }
     public string Name { get; set; } = string.Empty;
 
     /// <summary>When set, this game originated from a BGG import. The FK points

@@ -23,6 +23,21 @@ internal sealed class BggClient : IBggClient
 
     public BggClient(HttpClient http) => _http = http;
 
+    public async Task<IReadOnlyList<int>> SearchAsync(string query, CancellationToken ct = default)
+    {
+        using var resp = await _http.GetAsync($"search?query={Uri.EscapeDataString(query)}&type=boardgame", ct);
+        await EnsureSuccessAsync(resp, ct);
+        var doc = XDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+        var root = doc.Root ?? throw new InvalidOperationException("Empty search response.");
+        return root.Elements("item")
+            .Where(item => (string?)item.Attribute("type") == "boardgame")
+            .Select(item => int.TryParse((string?)item.Attribute("id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0)
+            .Where(id => id > 0)
+            .Distinct()
+            .Take(20)
+            .ToList();
+    }
+
     public async Task<BggGeekListFetch> FetchGeekListAsync(int geekListId, CancellationToken ct = default)
     {
         using var resp = await _http.GetAsync($"geeklist/{geekListId}", ct);

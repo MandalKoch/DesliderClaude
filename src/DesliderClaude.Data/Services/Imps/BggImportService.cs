@@ -2,6 +2,7 @@ using System.Text.Json;
 using DesliderClaude.Core.Models;
 using DesliderClaude.Core.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace DesliderClaude.Data.Services.Imps;
 
@@ -11,12 +12,49 @@ internal sealed class BggImportService : IBggImportService
 
     private readonly DesliderClaudeDbContext _db;
     private readonly IBggClient _bgg;
+    private readonly MemoryCache _searchCache;
 
-    public BggImportService(DesliderClaudeDbContext db, IBggClient bgg)
+    public BggImportService(DesliderClaudeDbContext db, IBggClient bgg, MemoryCache searchCache)
     {
         _db = db;
         _bgg = bgg;
+        _searchCache = searchCache;
     }
+
+    public async Task<IReadOnlyList<BggCandidateGame>> SearchGamesAsync(string query, CancellationToken ct = default)
+    {
+        var text = query?.Trim();
+        if (string.IsNullOrEmpty(text) || text.Length is < 2 or > 200)
+            throw new InvalidOperationException("Search for a game using 2 to 200 characters.");
+
+        var key = text.ToUpperInvariant();
+        if (!_searchCache.TryGetValue<int[]>(key, out var ids) || ids is null)
+        {
+            ids = (await _bgg.SearchAsync(text, ct)).Where(id => id > 0).Distinct().Take(20).ToArray();
+            _searchCache.Set(key, ids, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5),
+                Size = 1
+            });
+        }
+        var games = await EnsureGamesCachedAsync(ids, ct);
+        var byId = games.Where(g => g.Type == "boardgame").ToDictionary(g => g.BggGameId);
+        return ids.Where(byId.ContainsKey).Select(id => ToCandidate(byId[id])).ToList();
+    }
+
+    public async Task<BggCandidateGame> GetGameAsync(int bggGameId, CancellationToken ct = default)
+    {
+        if (bggGameId <= 0)
+            throw new InvalidOperationException("Choose a valid BoardGameGeek game.");
+        var games = await EnsureGamesCachedAsync([bggGameId], ct);
+        var game = games.FirstOrDefault(g => g.BggGameId == bggGameId && g.Type == "boardgame")
+            ?? throw new InvalidOperationException("That BoardGameGeek game was not found or is an expansion/accessory. Add a base game or enter its name manually.");
+        return ToCandidate(game);
+    }
+
+    private static BggCandidateGame ToCandidate(BggGame g)
+        => new(g.BggGameId, g.Name, g.ImageUrl, g.ThumbnailUrl, g.MinPlayers, g.MaxPlayers,
+            g.MinPlayTimeMinutes, g.MaxPlayTimeMinutes, ParseRecommended(g.RecommendedPlayerCountsJson));
 
     public async Task<BggImport> ImportGeekListAsync(Guid userId, int geekListId, CancellationToken ct = default)
     {
@@ -190,24 +228,8 @@ internal sealed class BggImportService : IBggImportService
         }
     }
 
-    /// <summary>Core upsert: fetches/refreshes BggGame rows for <paramref name="gameIds"/>,
-    /// replaces the import's items list, and bumps LastRefreshedAt. Expansions
-    /// and accessories are fetched (so we know what they are) but skipped from
-    /// the import's <see cref="BggImportItem"/> list — only "boardgame" items
-    /// surface as candidates.</summary>
-    private async Task ReplaceItemsAsync(BggImport import, IReadOnlyList<int> gameIds, string displayName, CancellationToken ct)
+    private async Task<IReadOnlyList<BggGame>> EnsureGamesCachedAsync(IReadOnlyList<int> gameIds, CancellationToken ct)
     {
-        import.Name = displayName;
-        import.LastRefreshedAt = DateTimeOffset.UtcNow;
-
-        await _db.BggImportItems.Where(x => x.BggImportId == import.Id).ExecuteDeleteAsync(ct);
-
-        if (gameIds.Count == 0)
-        {
-            await _db.SaveChangesAsync(ct);
-            return;
-        }
-
         // Existing BggGame rows for these IDs. Rows with Type == null pre-date
         // the column, so we re-fetch to backfill — every other field gets
         // refreshed at the same time. The "forever cache" rule still applies:
@@ -266,6 +288,30 @@ internal sealed class BggImportService : IBggImportService
         }
 
         await _db.SaveChangesAsync(ct);
+
+        return existingById.Values.ToList();
+    }
+
+    /// <summary>Core upsert: fetches/refreshes BggGame rows for <paramref name="gameIds"/>,
+    /// replaces the import's items list, and bumps LastRefreshedAt. Expansions
+    /// and accessories are fetched (so we know what they are) but skipped from
+    /// the import's <see cref="BggImportItem"/> list — only "boardgame" items
+    /// surface as candidates.</summary>
+    private async Task ReplaceItemsAsync(BggImport import, IReadOnlyList<int> gameIds, string displayName, CancellationToken ct)
+    {
+        import.Name = displayName;
+        import.LastRefreshedAt = DateTimeOffset.UtcNow;
+
+        await _db.BggImportItems.Where(x => x.BggImportId == import.Id).ExecuteDeleteAsync(ct);
+
+        if (gameIds.Count == 0)
+        {
+            await _db.SaveChangesAsync(ct);
+            return;
+        }
+
+        var cached = await EnsureGamesCachedAsync(gameIds, ct);
+        var existingById = cached.ToDictionary(g => g.BggGameId);
 
         // Only "boardgame" items become BggImportItems — expansions and
         // accessories are cached so we don't re-fetch them, but they don't

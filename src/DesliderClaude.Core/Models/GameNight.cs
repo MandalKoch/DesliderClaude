@@ -12,6 +12,9 @@ public class GameNight
     public Guid? CreatedByUserId { get; set; }
     public User? CreatedByUser { get; set; }
 
+    public Guid? GatheringId { get; set; }
+    public Gathering? Gathering { get; set; }
+
     public bool IsClosed { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ClosedAt { get; set; }

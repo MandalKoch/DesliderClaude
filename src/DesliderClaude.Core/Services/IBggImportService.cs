@@ -4,6 +4,9 @@ namespace DesliderClaude.Core.Services;
 
 public interface IBggImportService
 {
+    Task<IReadOnlyList<BggCandidateGame>> SearchGamesAsync(string query, CancellationToken ct = default);
+    Task<BggCandidateGame> GetGameAsync(int bggGameId, CancellationToken ct = default);
+
     Task<BggImport> ImportGeekListAsync(Guid userId, int geekListId, CancellationToken ct = default);
     Task<BggImport> ImportCollectionAsync(Guid userId, string username, CancellationToken ct = default);
 

@@ -15,7 +15,7 @@ namespace DesliderClaude.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.6");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("DesliderClaude.Core.Models.BggGame", b =>
                 {
@@ -157,6 +157,9 @@ namespace DesliderClaude.Data.Migrations
                     b.Property<Guid>("GameNightId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("GatheringGameId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(512)
                         .HasColumnType("TEXT");
@@ -176,6 +179,8 @@ namespace DesliderClaude.Data.Migrations
 
                     b.HasIndex("GameNightId");
 
+                    b.HasIndex("GatheringGameId");
+
                     b.ToTable("Games");
                 });
 
@@ -192,6 +197,9 @@ namespace DesliderClaude.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("GatheringId")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsClosed")
@@ -214,10 +222,166 @@ namespace DesliderClaude.Data.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("GatheringId");
+
                     b.HasIndex("ShareCode")
                         .IsUnique();
 
                     b.ToTable("GameNights");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.Gathering", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShareCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ShareCode")
+                        .IsUnique();
+
+                    b.ToTable("Gatherings");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringGame", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("BggGameId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("BringerMemberId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("GatheringId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsConfirmed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SuggestedByMemberId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BringerMemberId");
+
+                    b.HasIndex("GatheringId");
+
+                    b.HasIndex("SuggestedByMemberId");
+
+                    b.ToTable("GatheringGames");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringInterest", b =>
+                {
+                    b.Property<Guid>("GatheringGameId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Interested")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("GatheringGameId", "MemberId");
+
+                    b.HasIndex("MemberId");
+
+                    b.ToTable("GatheringInterests");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("GatheringId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("GatheringId", "Token")
+                        .IsUnique();
+
+                    b.HasIndex("GatheringId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("GatheringMembers");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringPlayedGame", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("GatheringGameId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("GatheringId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("PlayedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GatheringGameId");
+
+                    b.HasIndex("GatheringId");
+
+                    b.ToTable("GatheringPlayedGames");
                 });
 
             modelBuilder.Entity("DesliderClaude.Core.Models.Swipe", b =>
@@ -355,9 +519,16 @@ namespace DesliderClaude.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("DesliderClaude.Core.Models.GatheringGame", "GatheringGame")
+                        .WithMany()
+                        .HasForeignKey("GatheringGameId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("BggGame");
 
                     b.Navigation("GameNight");
+
+                    b.Navigation("GatheringGame");
                 });
 
             modelBuilder.Entity("DesliderClaude.Core.Models.GameNight", b =>
@@ -367,7 +538,102 @@ namespace DesliderClaude.Data.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("DesliderClaude.Core.Models.Gathering", "Gathering")
+                        .WithMany("Rounds")
+                        .HasForeignKey("GatheringId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedByUser");
+
+                    b.Navigation("Gathering");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.Gathering", b =>
+                {
+                    b.HasOne("DesliderClaude.Core.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringGame", b =>
+                {
+                    b.HasOne("DesliderClaude.Core.Models.GatheringMember", "BringerMember")
+                        .WithMany()
+                        .HasForeignKey("BringerMemberId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DesliderClaude.Core.Models.Gathering", "Gathering")
+                        .WithMany("Games")
+                        .HasForeignKey("GatheringId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DesliderClaude.Core.Models.GatheringMember", "SuggestedByMember")
+                        .WithMany()
+                        .HasForeignKey("SuggestedByMemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BringerMember");
+
+                    b.Navigation("Gathering");
+
+                    b.Navigation("SuggestedByMember");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringInterest", b =>
+                {
+                    b.HasOne("DesliderClaude.Core.Models.GatheringGame", "GatheringGame")
+                        .WithMany("Interests")
+                        .HasForeignKey("GatheringGameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DesliderClaude.Core.Models.GatheringMember", "Member")
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GatheringGame");
+
+                    b.Navigation("Member");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringMember", b =>
+                {
+                    b.HasOne("DesliderClaude.Core.Models.Gathering", "Gathering")
+                        .WithMany("Members")
+                        .HasForeignKey("GatheringId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DesliderClaude.Core.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Gathering");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringPlayedGame", b =>
+                {
+                    b.HasOne("DesliderClaude.Core.Models.GatheringGame", "GatheringGame")
+                        .WithMany()
+                        .HasForeignKey("GatheringGameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DesliderClaude.Core.Models.Gathering", "Gathering")
+                        .WithMany("PlayedGames")
+                        .HasForeignKey("GatheringId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Gathering");
+
+                    b.Navigation("GatheringGame");
                 });
 
             modelBuilder.Entity("DesliderClaude.Core.Models.Swipe", b =>
@@ -427,6 +693,22 @@ namespace DesliderClaude.Data.Migrations
                     b.Navigation("Games");
 
                     b.Navigation("Voters");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.Gathering", b =>
+                {
+                    b.Navigation("Games");
+
+                    b.Navigation("Members");
+
+                    b.Navigation("PlayedGames");
+
+                    b.Navigation("Rounds");
+                });
+
+            modelBuilder.Entity("DesliderClaude.Core.Models.GatheringGame", b =>
+                {
+                    b.Navigation("Interests");
                 });
 
             modelBuilder.Entity("DesliderClaude.Core.Models.User", b =>

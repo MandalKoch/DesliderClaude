@@ -11,6 +11,18 @@ public sealed class FakeBggClient : IBggClient
     public Dictionary<int, BggGeekListFetch> GeekLists { get; } = new();
     public Dictionary<string, BggCollectionFetch> Collections { get; } = new();
     public Dictionary<int, BggThingFetch> Things { get; } = new();
+    public Dictionary<string, IReadOnlyList<int>> Searches { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, IReadOnlyList<int>> SearchResults => Searches;
+    public Dictionary<string, Exception> SearchFailures { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<string> SearchCalls { get; } = new();
+    public List<IReadOnlyList<int>> FetchThingsCalls { get; } = new();
+
+    public Task<IReadOnlyList<int>> SearchAsync(string query, CancellationToken ct = default)
+    {
+        SearchCalls.Add(query);
+        if (SearchFailures.TryGetValue(query, out var error)) throw error;
+        return Task.FromResult(Searches.TryGetValue(query, out var ids) ? ids : (IReadOnlyList<int>)Array.Empty<int>());
+    }
 
     public Task<BggGeekListFetch> FetchGeekListAsync(int geekListId, CancellationToken ct = default)
     {
@@ -28,6 +40,7 @@ public sealed class FakeBggClient : IBggClient
 
     public Task<IReadOnlyList<BggThingFetch>> FetchThingsAsync(IReadOnlyList<int> bggGameIds, CancellationToken ct = default)
     {
+        FetchThingsCalls.Add(bggGameIds.ToArray());
         var result = bggGameIds
             .Where(id => Things.ContainsKey(id))
             .Select(id => Things[id])

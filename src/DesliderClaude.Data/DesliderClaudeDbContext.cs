@@ -8,6 +8,12 @@ public sealed class DesliderClaudeDbContext : DbContext
     public DesliderClaudeDbContext(DbContextOptions<DesliderClaudeDbContext> options)
         : base(options) { }
 
+    public DbSet<Gathering> Gatherings => Set<Gathering>();
+    public DbSet<GatheringMember> GatheringMembers => Set<GatheringMember>();
+    public DbSet<GatheringGame> GatheringGames => Set<GatheringGame>();
+    public DbSet<GatheringInterest> GatheringInterests => Set<GatheringInterest>();
+    public DbSet<GatheringPlayedGame> GatheringPlayedGames => Set<GatheringPlayedGame>();
+
     public DbSet<GameNight> GameNights => Set<GameNight>();
     public DbSet<Game> Games => Set<Game>();
     public DbSet<Voter> Voters => Set<Voter>();
