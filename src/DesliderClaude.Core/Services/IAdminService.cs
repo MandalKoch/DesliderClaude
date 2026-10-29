@@ -3,13 +3,15 @@ using DesliderClaude.Core.Models;
 namespace DesliderClaude.Core.Services;
 
 /// <summary>
-/// Site-wide admin operations. Guarded by the <c>Admin</c> role at the page level.
+/// Site-wide admin operations. Guarded by the configured HTTP Basic Auth middleware on <c>/admin</c> routes.
 /// </summary>
 public interface IAdminService
 {
     Task<AdminOverview> GetOverviewAsync(CancellationToken ct = default);
     Task<IReadOnlyList<AdminUserRow>> ListUsersAsync(CancellationToken ct = default);
     Task<IReadOnlyList<AdminNightRow>> ListNightsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<AdminGatheringRow>> ListGatheringsAsync(CancellationToken ct = default);
+    Task<AdminGatheringDetail?> GetGatheringDetailAsync(string shareCode, CancellationToken ct = default);
     Task<IReadOnlyList<GamePopularityRow>> TopGamesAsync(int take = 10, CancellationToken ct = default);
 
     /// <summary>Hard-delete a user. Their hosted nights and voter records lose the

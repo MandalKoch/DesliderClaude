@@ -7,7 +7,13 @@ public sealed record AdminOverview(
     int ClosedNightCount,
     int VoterCount,
     int SwipeCount,
-    int SwipesLast24h);
+    int SwipesLast24h,
+    int GatheringCount = 0,
+    int OpenGatheringCount = 0,
+    int ClosedGatheringCount = 0,
+    int GatheringMemberCount = 0,
+    int GatheringGameCount = 0,
+    int GatheringVoteCount = 0);
 
 public sealed record AdminUserRow(
     Guid Id,
@@ -43,4 +49,33 @@ public sealed record AdminVoterRow(
     string? Username,
     int SwipeCount,
     int YesCount,
-    int NoCount);
+    int NoCount,
+    IReadOnlyList<AdminGameChoice> Choices);
+
+public sealed record AdminGameChoice(Guid GameId, string GameName, bool? Yes);
+
+public sealed record AdminGatheringRow(
+    Guid Id,
+    string ShareCode,
+    string Name,
+    string? HostUsername,
+    bool IsVotingClosed,
+    DateTimeOffset CreatedAt,
+    int MemberCount,
+    int GameCount,
+    int VoteCount);
+
+public sealed record AdminGatheringGame(Guid Id, string Name, string? BringerDisplayName);
+
+public sealed record AdminGatheringMember(
+    Guid Id,
+    string DisplayName,
+    string? Username,
+    IReadOnlyList<AdminGameChoice> Choices);
+
+public sealed record AdminGatheringDetail(
+    AdminGatheringRow Gathering,
+    IReadOnlyList<AdminGatheringGame> Games,
+    IReadOnlyList<AdminGatheringMember> Participants,
+    IReadOnlyList<GatheringRoundView> Rounds,
+    IReadOnlyList<GatheringPlayedGameView> PlayedGames);
