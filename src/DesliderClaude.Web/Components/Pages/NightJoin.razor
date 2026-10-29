@@ -10,152 +10,143 @@
 
 @if (_night is null)
 {
-    <h1>Not found.</h1>
-    <p>That Game Night link doesn't match anything. Double-check the URL.</p>
-    <p><a href="/">← Back home</a></p>
+    <h1>Not found.</h1><p>That Game Night link doesn't match anything. Double-check the URL.</p><p><a href="/">← Back home</a></p>
+}
+else if (ClaimId is not null)
+{
+    <h1>Protect your guest identity.</h1>
+    @if (_claimGuest is null)
+    {
+        <p>This guest is no longer available. Protected participants must sign in with their own account.</p><a href="/night/@ShareCode">Go to the night →</a>
+    }
+    else
+    {
+        <div class="form-card"><p>Keep <strong>@_claimGuest.DisplayName</strong> and their existing votes, and require your account to use this identity.</p><p class="subtle">Guest names are shared and unprotected. Only claim the guest you have been using.</p>
+        @if (_userId is not null)
+        {
+            <form method="post" @formname="protect-guest" @onsubmit="JoinAsync"><AntiforgeryToken /><input type="hidden" name="Form.ExistingGuestId" value="@_claimGuest.Id" /><button class="btn btn-primary" type="submit" name="Form.Action" value="protect">Protect @_claimGuest.DisplayName with my account</button></form>
+        }
+        else
+        {
+            <div class="btn-row"><a class="btn btn-primary" href="@AuthUrl("register")">Create account to protect this guest</a><a class="btn btn-ghost" href="@AuthUrl("signin")">Sign in to protect this guest</a></div>
+        }
+        </div>
+    }
 }
 else if (_night.IsClosed)
 {
-    <h1>@_night.Name</h1>
-    <div class="notice notice-closed">
-        <p><strong>Voting closed.</strong> The host locked in the pick.</p>
-    </div>
-    <p><a href="/night/@ShareCode/winner">See tonight's pick →</a></p>
+    <h1>@_night.Name</h1><div class="notice notice-closed"><p><strong>Voting closed.</strong> The host locked in the pick.</p></div><p><a href="/night/@ShareCode/winner">See tonight's pick →</a></p>
 }
 else
 {
-    <span class="kicker">Game Night · @_night.Games.Count candidates</span>
-    <h1>@_night.Name</h1>
-    <p class="subtle">Enter your name to vote. No account needed.</p>
-
+    <span class="kicker">Game Night · @_night.Games.Count candidates</span><h1>@_night.Name</h1>
+    <p class="subtle">Join as a new guest, or continue as an existing guest. No account needed.</p>
     <div class="form-card">
         <form method="post" @formname="join" @onsubmit="JoinAsync">
-            <AntiforgeryToken />
-            <label for="display-name">Your name</label>
-            <input id="display-name" name="Form.DisplayName" value="@(Form?.DisplayName ?? _prefill)" maxlength="40" autocomplete="nickname" required autofocus />
-            <div class="btn-row">
-                <button type="submit" class="btn btn-primary">Join the vote →</button>
-            </div>
+            <AntiforgeryToken /><label for="display-name">Your name</label>
+            <input id="display-name" name="Form.DisplayName" value="@Form?.DisplayName" maxlength="40" autocomplete="nickname" required autofocus />
+            <div class="btn-row"><button type="submit" class="btn btn-primary" name="Form.Action" value="join">Join the vote →</button></div>
         </form>
+        @if (_guests.Count > 0)
+        {
+            <form method="post" @formname="rejoin-guest" @onsubmit="JoinAsync"><AntiforgeryToken /><label for="existing-guest">Continue as existing guest</label><select id="existing-guest" name="Form.ExistingGuestId" required><option value="">Choose your guest name…</option>@foreach (var guest in _guests) { <option value="@guest.Id">@guest.DisplayName</option> }</select><button type="submit" class="btn btn-ghost" name="Form.Action" value="rejoin">Continue as this guest</button></form>
+        }
+        <p class="subtle">Guest names are shared and unprotected: anyone with this night link can resume them. Sign in or create an account to protect your identity.</p>
+        <div class="btn-row"><a href="@AuthUrl("signin")">Sign in</a><a href="@AuthUrl("register")">Create account</a></div>
+        <p class="subtle">Your display name and voting participation are shared with this group. Read the <a href="/privacy">privacy notice</a>.</p>
     </div>
-
-    @if (!string.IsNullOrEmpty(_error))
-    {
-        <p class="text-danger">@_error</p>
-    }
 }
+@if (_error is not null) { <p class="text-danger" role="alert">@_error</p> }
 
 @code {
     [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "claim")] public Guid? ClaimId { get; set; }
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
     [CascadingParameter] public Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromForm] public JoinFormModel? Form { get; set; }
-
     private GameNight? _night;
+    private Guid? _userId;
     private string? _error;
-    private string _prefill = string.Empty;
+    private IReadOnlyList<ParticipantIdentity> _guests = [];
+    private ParticipantIdentity? _claimGuest;
 
     protected override async Task OnInitializedAsync()
     {
         _night = await GameNights.GetByShareCodeAsync(ShareCode);
-        if (_night is null || HttpContext is null || _night.IsClosed) return;
-
-        var voterCookieName = VoterCookie.Name(ShareCode);
-        var existingVoterToken = HttpContext.Request.Cookies[voterCookieName];
-
-        // 1. Already joined this night? Jump straight to swiping.
-        if (!string.IsNullOrEmpty(existingVoterToken))
+        if (_night is null || HttpContext is null) return;
+        var user = AuthState is null ? null : (await AuthState).User;
+        _userId = user?.GetUserId();
+        _guests = (await Voting.ListParticipantsAsync(_night.Id)).Where(p => !p.IsAccountProtected).ToArray();
+        _claimGuest = _guests.FirstOrDefault(p => p.Id == ClaimId);
+        if (ClaimId is not null || _night.IsClosed) return;
+        var existingToken = HttpContext.Request.Cookies[VoterCookie.Name(ShareCode)];
+        var progress = string.IsNullOrEmpty(existingToken) ? null : await Voting.GetProgressAsync(existingToken, userId: _userId);
+        if (progress?.GameNightId == _night.Id && (_userId is null || progress.UserId == _userId))
         {
-            var progress = await Voting.GetProgressAsync(existingVoterToken);
-            if (progress?.GameNightId == _night.Id)
-            {
-                Nav.NavigateTo($"/night/{ShareCode}/swipe");
-                return;
-            }
+            Nav.NavigateTo($"/night/{ShareCode}/swipe");
+            return;
         }
-
-        // Gathering members keep their identity across each play vote.
         if (_night.Gathering is { } gathering)
         {
             var memberToken = HttpContext.Request.Cookies[$"deslider-gathering-{gathering.ShareCode}"];
-            var member = string.IsNullOrEmpty(memberToken) ? null : await Gatherings.GetMemberAsync(gathering.Id, memberToken);
-            if (member is not null)
+            var member = string.IsNullOrEmpty(memberToken) ? null : await Gatherings.GetMemberAsync(gathering.Id, memberToken, userId: _userId);
+            if (member is not null && (_userId is null || member.UserId == _userId))
             {
-                var token = EnsureVoterToken(voterCookieName, existingVoterToken);
-                await Voting.JoinAsync(_night.Id, member.DisplayName, token, member.UserId);
-                Nav.NavigateTo($"/night/{ShareCode}/swipe");
-                return;
-            }
-        }
-
-        // 2. Signed-in voter? Auto-join with their username — no prompt needed.
-        if (AuthState is not null)
-        {
-            var state = await AuthState;
-            var username = state.User.GetUsername();
-            var userId = state.User.GetUserId();
-            if (!string.IsNullOrEmpty(username) && userId is { } uid)
-            {
-                var token = EnsureVoterToken(voterCookieName, existingVoterToken);
                 try
                 {
-                    await Voting.JoinAsync(_night.Id, username, token, uid);
+                    var token = VoterCookie.NewToken();
+                    await Voting.JoinAsync(_night.Id, member.DisplayName, token, _userId);
+                    SetCookie(token);
                     Nav.NavigateTo($"/night/{ShareCode}/swipe");
                     return;
                 }
-                catch (InvalidOperationException)
-                {
-                    // Fall through to the manual form.
-                }
-                _prefill = username;
+                catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException) { _error = ex.Message; }
             }
+        }
+        if (_userId is Guid userId && !string.IsNullOrEmpty(user?.GetUsername()))
+        {
+            try
+            {
+                var token = VoterCookie.NewToken();
+                var displayName = user.GetUsername()!;
+                await Voting.JoinAsync(_night.Id, displayName[..Math.Min(displayName.Length, 40)], token, userId);
+                SetCookie(token);
+                Nav.NavigateTo($"/night/{ShareCode}/swipe");
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException) { _error = ex.Message; }
         }
     }
 
-    private string EnsureVoterToken(string cookieName, string? existing)
-    {
-        if (!string.IsNullOrEmpty(existing)) return existing;
-        var token = VoterCookie.NewToken();
-        HttpContext!.Response.Cookies.Append(cookieName, token, VoterCookie.Options);
-        return token;
-    }
+    private string AuthUrl(string page) => $"/{page}?returnUrl={Uri.EscapeDataString($"/night/{ShareCode}" + (ClaimId is Guid id ? $"?claim={id}" : ""))}";
+    private void SetCookie(string token) => HttpContext!.Response.Cookies.Append(VoterCookie.Name(ShareCode), token, VoterCookie.Options(HttpContext.Request.IsHttps));
 
     private async Task JoinAsync()
     {
-        if (_night is null || _night.IsClosed || HttpContext is null) return;
-
-        var name = Form?.DisplayName?.Trim();
-        if (string.IsNullOrEmpty(name))
-        {
-            _error = "Please enter a name.";
-            return;
-        }
-
-        var voterCookieName = VoterCookie.Name(ShareCode);
-        var voterToken = EnsureVoterToken(voterCookieName, HttpContext.Request.Cookies[voterCookieName]);
-
-        Guid? userId = null;
-        if (AuthState is not null)
-        {
-            var state = await AuthState;
-            userId = state.User.GetUserId();
-        }
-
+        if (_night is null || HttpContext is null) return;
         try
         {
-            await Voting.JoinAsync(_night.Id, name, voterToken, userId);
+            var token = VoterCookie.NewToken();
+            if (Form?.Action is "rejoin" or "protect")
+            {
+                if (Form.ExistingGuestId is not Guid guestId) throw new InvalidOperationException("Choose a guest name.");
+                if (Form.Action == "protect" && _userId is null) throw new InvalidOperationException("Sign in to protect this guest.");
+                await Voting.RejoinGuestAsync(_night.Id, guestId, token, Form.Action == "protect" ? _userId : null);
+            }
+            else
+            {
+                if (_night.IsClosed) throw new InvalidOperationException("Voting is closed.");
+                await Voting.JoinAsync(_night.Id, Form?.DisplayName ?? string.Empty, token, _userId);
+            }
+            SetCookie(token);
+            Nav.NavigateTo(_night.IsClosed ? $"/night/{ShareCode}/winner" : $"/night/{ShareCode}/swipe");
         }
-        catch (InvalidOperationException ex)
-        {
-            _error = ex.Message;
-            return;
-        }
-
-        Nav.NavigateTo($"/night/{ShareCode}/swipe");
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UnauthorizedAccessException) { _error = ex.Message; }
     }
 
     public sealed class JoinFormModel
     {
+        public string? Action { get; set; }
         public string DisplayName { get; set; } = string.Empty;
+        public Guid? ExistingGuestId { get; set; }
     }
 }

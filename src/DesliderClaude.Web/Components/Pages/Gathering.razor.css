@@ -113,3 +113,7 @@ details .btn { margin-top: .7rem; }
 .round-list a { display: inline-flex; align-items: center; min-height: 44px; }
 .suggestion-actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: .85rem; }
 @media (max-width: 540px) { .suggestion-actions > .btn { flex: 1; } }
+.search-feedback { color: var(--g-muted); font-size: .85rem; line-height: 1.5; min-height: 3.8rem; margin: .65rem 0 0; }
+.search-feedback a { color: var(--g-accent); display: inline-block; padding: .3rem 0; }
+#game-results { scroll-margin-top: 1rem; }
+.search-feedback.text-danger { color: #ffb4a8; }

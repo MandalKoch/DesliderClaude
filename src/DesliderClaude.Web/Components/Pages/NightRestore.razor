@@ -13,7 +13,7 @@
     <p class="subtle">@_error</p>
     <div class="btn-row">
         <a class="btn" href="/night/@ShareCode">Go to the night →</a>
-        <a class="btn btn-ghost" href="/">← Back home</a>
+        <a class="btn btn-ghost" href="@($"/signin?returnUrl={Uri.EscapeDataString($"/night/{ShareCode}")}")">Sign in with your account</a>
     </div>
 }
 
@@ -35,14 +35,14 @@
             return;
         }
 
-        var progress = await Voting.GetProgressAsync(Token);
+        var progress = await Voting.GetProgressAsync(Token, userId: HttpContext.User.GetUserId());
         if (progress is null || progress.GameNightId != night.Id)
         {
-            _error = "This restore link is invalid or belongs to a different night.";
+            _error = "This link is invalid, belongs to a different night, or requires its owner to sign in.";
             return;
         }
 
-        HttpContext.Response.Cookies.Append(VoterCookie.Name(ShareCode), Token, VoterCookie.Options);
+        HttpContext.Response.Cookies.Append(VoterCookie.Name(ShareCode), Token, VoterCookie.Options(HttpContext.Request.IsHttps));
         Nav.NavigateTo(night.IsClosed
             ? $"/night/{ShareCode}/winner"
             : $"/night/{ShareCode}/swipe");

@@ -85,6 +85,7 @@
     private GatheringMemberView? _member;
     private GatheringGameView? _currentGame;
     private string? _memberToken;
+    private Guid? _userId;
     private string? _error;
     private int VotedCount => _gathering?.Games.Count(HasVoted) ?? 0;
     private string ProgressRatio => (_gathering?.Games.Count > 0 ? (double)VotedCount / _gathering.Games.Count : 0).ToString("0.###", CultureInfo.InvariantCulture);
@@ -93,8 +94,10 @@
     {
         _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
         if (_gathering is null) return;
+        _userId = HttpContext?.User.GetUserId();
         _memberToken = HttpContext?.Request.Cookies[$"deslider-gathering-{ShareCode}"];
-        if (_memberToken is not null) _member = await Gatherings.GetMemberAsync(_gathering.Id, _memberToken);
+        if (_memberToken is not null) _member = await Gatherings.GetMemberAsync(_gathering.Id, _memberToken, userId: _userId);
+        if (_userId is not null && _member?.UserId != _userId) _member = null;
         PickNextGame();
     }
 
@@ -111,7 +114,7 @@
         if (_gathering is null || _member is null || _memberToken is null || Form is null) return;
         try
         {
-            await Gatherings.SetInterestAsync(_gathering.Id, _memberToken, Form.GameId, Form.Interested);
+            await Gatherings.SetInterestAsync(_gathering.Id, _memberToken, Form.GameId, Form.Interested, userId: _userId);
             _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
             PickNextGame();
         }

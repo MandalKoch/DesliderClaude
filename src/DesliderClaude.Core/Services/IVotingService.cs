@@ -11,14 +11,17 @@ public interface IVotingService
         Guid? userId = null,
         CancellationToken ct = default);
 
-    Task RecordSwipeAsync(string voterToken, Guid gameId, bool yes, CancellationToken ct = default);
+    Task<IReadOnlyList<ParticipantIdentity>> ListParticipantsAsync(Guid gameNightId, CancellationToken ct = default);
+    Task<Voter> RejoinGuestAsync(Guid gameNightId, Guid voterId, string voterToken, Guid? userId = null, CancellationToken ct = default);
+
+    Task RecordSwipeAsync(string voterToken, Guid gameId, bool yes, Guid? userId = null, CancellationToken ct = default);
 
     /// <summary>Delete a swipe the voter previously cast.</summary>
-    Task RemoveSwipeAsync(string voterToken, Guid gameId, CancellationToken ct = default);
+    Task RemoveSwipeAsync(string voterToken, Guid gameId, Guid? userId = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<GameRanking>> GetRankingAsync(Guid gameNightId, CancellationToken ct = default);
     Task<int> GetVoterCountAsync(Guid gameNightId, CancellationToken ct = default);
-    Task<VoterProgress?> GetProgressAsync(string voterToken, CancellationToken ct = default);
+    Task<VoterProgress?> GetProgressAsync(string voterToken, Guid? userId = null, CancellationToken ct = default);
 
     /// <summary>Per-voter progress for the host dashboard. Includes voter tokens.</summary>
     Task<IReadOnlyList<VoterStatus>> ListVoterStatusesAsync(Guid gameNightId, CancellationToken ct = default);
@@ -43,5 +46,5 @@ public interface IVotingService
     /// candidate has been swiped (the swipe flow is done; the voter must go to
     /// the dedicated manage-votes page to change or remove existing votes).
     /// </summary>
-    Task<Game?> PickNextGameAsync(string voterToken, Guid? excludeGameId = null, CancellationToken ct = default);
+    Task<Game?> PickNextGameAsync(string voterToken, Guid? excludeGameId = null, Guid? userId = null, CancellationToken ct = default);
 }

@@ -23,9 +23,10 @@
                autocomplete="new-password" required />
 
         <div class="btn-row">
-            <a class="btn btn-ghost" href="/signin">← Sign in instead</a>
+            <a class="btn btn-ghost" href="@($"/signin?returnUrl={Uri.EscapeDataString(AuthExtensions.SafeReturnUrl(ReturnUrl))}")">← Sign in instead</a>
             <button type="submit" class="btn btn-primary">Create account →</button>
         </div>
+        <p class="subtle">Read how your account information is used in our <a href="/privacy">privacy notice</a>.</p>
     </form>
 
     @if (!string.IsNullOrEmpty(_taken) && !string.IsNullOrEmpty(_suggestion))
@@ -45,6 +46,7 @@
 
 @code {
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
     [SupplyParameterFromForm] public RegisterFormModel? Form { get; set; }
 
     private string? _error;
@@ -85,7 +87,7 @@
             return;
         }
 
-        Nav.NavigateTo("/");
+        Nav.NavigateTo(AuthExtensions.SafeReturnUrl(ReturnUrl));
     }
 
     public sealed class RegisterFormModel

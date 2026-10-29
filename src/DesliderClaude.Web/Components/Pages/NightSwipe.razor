@@ -41,9 +41,10 @@ else
     <div class="swipe-wrap">
         @if (!string.IsNullOrEmpty(_restoreUrl))
         {
+            <p class="subtle"><a href="@($"/night/{ShareCode}?claim={_progress!.VoterId}")">Protect this guest with an account →</a></p>
             <details class="restore-panel">
                 <summary>Bookmark this link to return later</summary>
-                <p class="subtle">Clearing cookies or switching browsers would otherwise lose your votes. This link is your key — keep it private.</p>
+                <p class="subtle">This private link resumes your guest session. Guest names are unprotected and can also be resumed from the night link.</p>
                 <input type="text" readonly value="@_restoreUrl" onclick="this.select();" />
                 <div class="btn-row">
                     <button type="button" class="btn btn-ghost btn-sm"
@@ -146,6 +147,7 @@ else
     private int _swipeCount;
     private string _progressRatio = "0";
     private bool _isHost;
+    private Guid? _userId;
     private string? _restoreUrl;
     private IReadOnlyList<VoterPublicStatus> _others = Array.Empty<VoterPublicStatus>();
 
@@ -157,8 +159,8 @@ else
         if (AuthState is not null)
         {
             var state = await AuthState;
-            var uid = state.User.GetUserId();
-            _isHost = uid is not null && _night.CreatedByUserId == uid;
+            _userId = state.User.GetUserId();
+            _isHost = _userId is not null && _night.CreatedByUserId == _userId;
         }
 
         if (_night.IsClosed)
@@ -172,15 +174,15 @@ else
         _voterToken = HttpContext?.Request.Cookies[VoterCookie.Name(ShareCode)];
         if (string.IsNullOrEmpty(_voterToken)) return;
 
-        _progress = await Voting.GetProgressAsync(_voterToken);
-        if (_progress is null || _progress.GameNightId != _night.Id)
+        _progress = await Voting.GetProgressAsync(_voterToken, userId: _userId);
+        if (_progress is null || _progress.GameNightId != _night.Id || (_userId is not null && _progress.UserId != _userId))
         {
             _voterToken = null;
             return;
         }
 
         _swipeCount = _progress.Swipes.Count;
-        _currentGame = await Voting.PickNextGameAsync(_voterToken);
+        _currentGame = await Voting.PickNextGameAsync(_voterToken, userId: _userId);
 
         if (_progress.UserId is null && HttpContext is not null)
         {
@@ -213,9 +215,9 @@ else
         if (_voterToken is null || _night is null || _night.IsClosed) return;
         if (Form is null || Form.GameId == Guid.Empty) return;
 
-        await Voting.RecordSwipeAsync(_voterToken, Form.GameId, Form.Yes);
+        await Voting.RecordSwipeAsync(_voterToken, Form.GameId, Form.Yes, userId: _userId);
 
-        var next = await Voting.PickNextGameAsync(_voterToken, Form.GameId);
+        var next = await Voting.PickNextGameAsync(_voterToken, Form.GameId, userId: _userId);
         Nav.NavigateTo(next is null
             ? $"/night/{ShareCode}/votes"
             : $"/night/{ShareCode}/swipe");

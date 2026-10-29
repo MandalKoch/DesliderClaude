@@ -38,9 +38,9 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
             .Select(x => new GatheringSummary(x.Id, x.Name, x.ShareCode, x.Games.Count, x.Members.Count, x.CreatedByUserId == userId))
             .ToListAsync(ct);
 
-    public Task<GatheringMemberView?> GetMemberAsync(Guid gatheringId, string memberToken, CancellationToken ct = default)
+    public Task<GatheringMemberView?> GetMemberAsync(Guid gatheringId, string memberToken, Guid? userId = null, CancellationToken ct = default)
         => db.GatheringMembers.AsNoTracking()
-            .Where(x => x.GatheringId == gatheringId && x.Token == memberToken)
+            .Where(x => x.GatheringId == gatheringId && x.Token == memberToken && (x.UserId == null || x.UserId == userId))
             .Select(x => new GatheringMemberView(x.Id, x.DisplayName, x.UserId))
             .FirstOrDefaultAsync(ct);
 
@@ -51,25 +51,50 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
         if (!await db.Gatherings.AnyAsync(x => x.Id == gatheringId, ct))
             throw new InvalidOperationException("Gathering not found.");
 
-        var member = await db.GatheringMembers.FirstOrDefaultAsync(x => x.GatheringId == gatheringId && x.Token == token, ct);
-        if (member is null && userId is not null)
-            member = await db.GatheringMembers.FirstOrDefaultAsync(x => x.GatheringId == gatheringId && x.UserId == userId, ct);
+        var tokenOwner = await db.GatheringMembers.FirstOrDefaultAsync(x => x.Token == token, ct);
+        if (tokenOwner is not null && (tokenOwner.GatheringId != gatheringId || tokenOwner.UserId != userId))
+            throw new UnauthorizedAccessException("Choose the guest explicitly or sign in to the account that owns this session.");
+        var member = userId is not null
+            ? await db.GatheringMembers.FirstOrDefaultAsync(x => x.GatheringId == gatheringId && x.UserId == userId, ct)
+            : tokenOwner;
+        if (member is null && userId is null)
+        {
+            var matches = await db.GatheringMembers.Where(x => x.GatheringId == gatheringId).ToListAsync(ct);
+            var guests = matches.Where(x => x.UserId is null && string.Equals(x.DisplayName.Trim(), name, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (guests.Count > 1) throw new InvalidOperationException("Several guests use that name. Choose your existing guest from the list.");
+            member = guests.SingleOrDefault();
+            if (member is null && matches.Any(x => x.UserId is not null && string.Equals(x.DisplayName.Trim(), name, StringComparison.OrdinalIgnoreCase)))
+                throw new UnauthorizedAccessException("That name belongs to an account. Sign in to use it.");
+        }
         if (member is null)
         {
             member = new GatheringMember { GatheringId = gatheringId, DisplayName = name, Token = token, UserId = userId };
             db.GatheringMembers.Add(member);
         }
-        else
-        {
-            member.Token = token;
-        }
+        else member.Token = token;
         await db.SaveChangesAsync(ct);
         return new GatheringMemberView(member.Id, member.DisplayName, member.UserId);
     }
 
-    public async Task AddGameAsync(Guid gatheringId, string memberToken, GameCandidate candidate, CancellationToken ct = default)
+    public async Task<GatheringMemberView> RejoinGuestAsync(Guid gatheringId, Guid memberId, string memberToken, Guid? userId = null, CancellationToken ct = default)
     {
-        var member = await RequireMemberAsync(gatheringId, memberToken, ct);
+        var token = RequiredText(memberToken, 128, "Your session is missing. Please rejoin the gathering.");
+        var member = await db.GatheringMembers.SingleOrDefaultAsync(x => x.Id == memberId && x.GatheringId == gatheringId, ct)
+            ?? throw new InvalidOperationException("Guest not found in this gathering.");
+        if (member.UserId is not null) throw new UnauthorizedAccessException("Sign in to the account that owns this participant.");
+        if (userId is not null && await db.GatheringMembers.AnyAsync(x => x.GatheringId == gatheringId && x.UserId == userId, ct))
+            throw new InvalidOperationException("Your account already has a participant in this gathering.");
+        if (await db.GatheringMembers.AnyAsync(x => x.Token == token && x.Id != memberId, ct))
+            throw new InvalidOperationException("Start a new session to rejoin this guest.");
+        member.Token = token;
+        member.UserId = userId;
+        await db.SaveChangesAsync(ct);
+        return new GatheringMemberView(member.Id, member.DisplayName, member.UserId);
+    }
+
+    public async Task AddGameAsync(Guid gatheringId, string memberToken, GameCandidate candidate, Guid? userId = null, CancellationToken ct = default)
+    {
+        var member = await RequireMemberAsync(gatheringId, memberToken, userId, ct);
         await RequireVotingOpenAsync(gatheringId, ct);
         if (candidate.BggGameId is int bggId)
         {
@@ -99,7 +124,7 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
 
     public async Task RemoveGameAsync(Guid gatheringId, string memberToken, Guid gameId, Guid? requestingUserId = null, CancellationToken ct = default)
     {
-        var member = await RequireMemberAsync(gatheringId, memberToken, ct);
+        var member = await RequireMemberAsync(gatheringId, memberToken, requestingUserId, ct);
         await RequireVotingOpenAsync(gatheringId, ct);
         var game = await RequireGameAsync(gatheringId, gameId, ct);
         var isHost = requestingUserId is not null && await db.Gatherings.AnyAsync(g => g.Id == gatheringId && g.CreatedByUserId == requestingUserId, ct);
@@ -112,9 +137,9 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task SetInterestAsync(Guid gatheringId, string memberToken, Guid gameId, bool interested, CancellationToken ct = default)
+    public async Task SetInterestAsync(Guid gatheringId, string memberToken, Guid gameId, bool interested, Guid? userId = null, CancellationToken ct = default)
     {
-        var member = await RequireMemberAsync(gatheringId, memberToken, ct);
+        var member = await RequireMemberAsync(gatheringId, memberToken, userId, ct);
         await RequireVotingOpenAsync(gatheringId, ct);
         await RequireGameAsync(gatheringId, gameId, ct);
         var interest = await db.GatheringInterests.FindAsync([gameId, member.Id], ct);
@@ -190,8 +215,8 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
             throw new InvalidOperationException("Voting is closed. The host can reopen it to add games or change votes.");
     }
 
-    private async Task<GatheringMember> RequireMemberAsync(Guid gatheringId, string token, CancellationToken ct)
-        => await db.GatheringMembers.FirstOrDefaultAsync(x => x.GatheringId == gatheringId && x.Token == token, ct)
+    private async Task<GatheringMember> RequireMemberAsync(Guid gatheringId, string token, Guid? userId, CancellationToken ct)
+        => await db.GatheringMembers.FirstOrDefaultAsync(x => x.GatheringId == gatheringId && x.Token == token && (x.UserId == null || x.UserId == userId), ct)
             ?? throw new UnauthorizedAccessException("Join this gathering first.");
 
     private async Task RequireHostAsync(Guid gatheringId, Guid userId, CancellationToken ct)

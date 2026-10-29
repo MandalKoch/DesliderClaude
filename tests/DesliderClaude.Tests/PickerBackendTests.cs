@@ -153,7 +153,7 @@ public sealed class PickerBackendTests
         await _gatherings.JoinAsync(gathering.Id, "Host", "host", _host);
         await _gatherings.JoinAsync(other.Id, "Host", "other", _host);
         foreach (var name in new[] { "Azul", "Dune" })
-            await _gatherings.AddGameAsync(gathering.Id, "host", new GameCandidate(name));
+            await _gatherings.AddGameAsync(gathering.Id, "host", new GameCandidate(name), _host);
         var ids = (await _gatherings.GetByShareCodeAsync(gathering.ShareCode))!.Games.Select(g => g.Id).ToArray();
         Assert.ThrowsAsync<InvalidOperationException>(() => _gatherings.RemoveGameAsync(other.Id, "other", ids[0], _host));
         foreach (var id in ids)

@@ -273,4 +273,61 @@ public sealed class GatheringFlowTests : PageTest
         await Expect(guest.Locator(".cover-card")).ToHaveCountAsync(1);
     }
 
+    [TestCase("Gloomhaven", "success")]
+    [TestCase("mobile lookup unavailable", "failure")]
+    [TestCase("glommhaven", "empty")]
+    public async Task Mobile_BGG_search_shows_pending_and_outcome_without_extra_scrolling(string query, string outcomeKind)
+    {
+        _app.Bgg.Searches[query] = outcomeKind == "empty" ? [] : [410_001];
+        _app.Bgg.Things[410_001] = Thing(410_001, "Gloomhaven");
+        if (outcomeKind == "failure") _app.Bgg.SearchFailures[query] = new HttpRequestException("BGG unavailable");
+        var responseGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _app.Bgg.SearchDelays[query] = responseGate.Task;
+        var gatheringUrl = await CreateGatheringAsync("Mobile search");
+        await using var mobileContext = await Browser.NewContextAsync(new()
+        {
+            BaseURL = _app.ServerUrl,
+            ViewportSize = new() { Width = 390, Height = 844 },
+            IsMobile = true,
+            HasTouch = true,
+            StorageState = await Context.StorageStateAsync(),
+        });
+        var mobile = await mobileContext.NewPageAsync();
+        await mobile.GotoAsync(gatheringUrl + "/games");
+        await mobile.GetByLabel("Suggest a game you can bring").FillAsync(query);
+        var feedback = mobile.Locator("[data-search-feedback]");
+        try
+        {
+            await mobile.GetByRole(AriaRole.Button, new() { Name = "Search on BGG", Exact = true }).TapAsync();
+            await Expect(feedback).ToContainTextAsync("Searching");
+            await Expect(feedback).ToBeInViewportAsync();
+        }
+        finally
+        {
+            responseGate.TrySetResult();
+        }
+        if (outcomeKind == "success")
+        {
+            await Expect(mobile.Locator(".candidate-row")).ToHaveCountAsync(1);
+            await Expect(feedback).ToContainTextAsync("1");
+            await Expect(feedback).ToBeInViewportAsync();
+            await mobile.GetByRole(AriaRole.Link, new() { Name = "View results", Exact = false }).TapAsync();
+            await Expect(mobile.Locator(".candidate-row").First).ToBeInViewportAsync();
+        }
+        else if (outcomeKind == "failure")
+        {
+            await Expect(feedback).ToContainTextAsync("Couldn't load games from BoardGameGeek.");
+            await Expect(feedback).ToBeInViewportAsync();
+            await Expect(mobile.GetByLabel("Suggest a game you can bring")).ToHaveValueAsync(query);
+        }
+        else
+        {
+            await Expect(feedback).ToContainTextAsync("No matching games");
+            await Expect(feedback).ToBeInViewportAsync();
+            await Expect(mobile.Locator(".candidate-row")).ToHaveCountAsync(0);
+            await Expect(mobile.GetByLabel("Suggest a game you can bring")).ToHaveValueAsync(query);
+        }
+        await mobile.ScreenshotAsync(new() { Path = $"/tmp/deslider-bgg-mobile-{outcomeKind}.png" });
+    }
+
 }
