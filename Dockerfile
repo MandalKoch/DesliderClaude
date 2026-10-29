@@ -21,7 +21,8 @@ COPY src/DesliderClaude.Web.Client/     src/DesliderClaude.Web.Client/
 RUN dotnet publish src/DesliderClaude.Web/DesliderClaude.Web.csproj \
     -c Release \
     -o /app/publish \
-    --no-restore
+    --no-restore \
+    && test -s /app/publish/wwwroot/_framework/blazor.web.js
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
