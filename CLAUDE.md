@@ -230,3 +230,10 @@ DesliderClaude.slnx
 - One ongoing gathering vote uses existing `GatheringInterest` records, preserving previous interest choices. Newly added games remain available to members who finished voting earlier. Legacy round results and played history remain preserved.
 - Hosts can close or reopen gathering voting. The additive `AddGatheringVotingState` migration defaults existing gatherings to open. Services reject additions, removals, and vote changes while closed; author/host removal permissions and historical game protections remain in force.
 - Verification: all 42 solution tests pass, including mobile picker and swipe scroll preservation, guest additions, vote editing, late additions, and host close/reopen. Mobile and desktop layouts were visually checked in Chromium; physical devices and Safari were not checked.
+
+### 2026-10-29 — Published Blazor assets
+
+- Docker restores project files before copying Razor sources. The SDK detects Razor files to request `Microsoft.AspNetCore.App.Internal.Assets`, so that restore sequence omitted Blazor's browser script even though normal local builds passed. The deployed script returned 404 and enhanced forms fell back to full page reloads, resetting scroll.
+- Web explicitly sets `RequiresAspNetWebAssets=true` so the package is restored before Razor sources arrive. Docker also checks that the published framework script exists before building the runtime image.
+- After publishing, run `python3 tests/smoke_published_assets.py /absolute/path/to/publish` to check the scripts referenced by the production home page. The check uses a temporary database and local server.
+- Reproduced the deployed 404 with a fresh project-only restore followed by source copy and `publish --no-restore`. With the explicit asset property, the same staged sequence serves all three referenced scripts successfully.
