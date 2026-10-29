@@ -5,7 +5,8 @@ public sealed record GatheringView(
     IReadOnlyList<GatheringMemberView> Members,
     IReadOnlyList<GatheringGameView> Games,
     IReadOnlyList<GatheringRoundView> Rounds,
-    IReadOnlyList<GatheringPlayedGameView> PlayedGames);
+    IReadOnlyList<GatheringPlayedGameView> PlayedGames,
+    bool IsVotingClosed = false);
 
 public sealed record GatheringMemberView(Guid Id, string DisplayName, Guid? UserId);
 

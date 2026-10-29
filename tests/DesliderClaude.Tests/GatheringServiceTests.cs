@@ -121,6 +121,8 @@ public class GatheringServiceTests
         await _service.AddGameAsync(gathering.Id, "host-session", Candidate("Cascadia"));
         var games = (await _service.GetByShareCodeAsync(gathering.ShareCode))!.Games;
         var ids = games.Select(x => x.Id).ToArray();
+        foreach (var id in ids)
+            await _service.ConfirmGameAsync(gathering.Id, _host, id, false, null);
         Assert.ThrowsAsync<InvalidOperationException>(() => _service.StartVoteAsync(gathering.Id, _host, "Vote", ids));
         Assert.ThrowsAsync<InvalidOperationException>(() => _service.MarkPlayedAsync(gathering.Id, _host, ids[0]));
         await _service.ConfirmGameAsync(gathering.Id, _host, ids[0], true, null);
@@ -138,6 +140,56 @@ public class GatheringServiceTests
         Assert.ThrowsAsync<InvalidOperationException>(() => _service.AddGameAsync(gathering.Id, "alex-session", Candidate(" ")));
         Assert.ThrowsAsync<InvalidOperationException>(() => _service.CreateAsync(new string('x', 201), _host));
         Assert.ThrowsAsync<InvalidOperationException>(() => _service.JoinAsync(gathering.Id, new string('x', 41), "another-session"));
+    }
+
+    [Test]
+    public async Task DirectAdditions_AreReadyToBringAndOnlyTheHostCanCloseOrReopenVoting()
+    {
+        var gathering = await _service.CreateAsync("Weekend", _host);
+        var member = await _service.JoinAsync(gathering.Id, "Alex", "alex-session");
+        await _service.AddGameAsync(gathering.Id, "alex-session", Candidate("Dune"));
+        gathering = (await _service.GetByShareCodeAsync(gathering.ShareCode))!;
+        var game = gathering.Games.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(gathering.IsVotingClosed, Is.False);
+            Assert.That(game.IsConfirmed, Is.True);
+            Assert.That(game.BringerMemberId, Is.EqualTo(member.Id));
+        });
+        await _service.SetInterestAsync(gathering.Id, "alex-session", game.Id, true);
+        Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.SetVotingClosedAsync(gathering.Id, Guid.CreateVersion7(), true));
+        await _service.SetVotingClosedAsync(gathering.Id, _host, true);
+        Assert.That((await _service.GetByShareCodeAsync(gathering.ShareCode))!.IsVotingClosed, Is.True);
+        Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.SetVotingClosedAsync(gathering.Id, Guid.CreateVersion7(), false));
+        Assert.ThrowsAsync<InvalidOperationException>(() => _service.AddGameAsync(gathering.Id, "alex-session", Candidate("Azul")));
+        Assert.ThrowsAsync<InvalidOperationException>(() => _service.SetInterestAsync(gathering.Id, "alex-session", game.Id, false));
+        Assert.ThrowsAsync<InvalidOperationException>(() => _service.RemoveGameAsync(gathering.Id, "alex-session", game.Id));
+        gathering = (await _service.GetByShareCodeAsync(gathering.ShareCode))!;
+        Assert.That(gathering.Games.Single().Interests.Single().Interested, Is.True);
+
+        await _service.SetVotingClosedAsync(gathering.Id, _host, false);
+        await _service.AddGameAsync(gathering.Id, "alex-session", Candidate("Azul"));
+        await _service.SetInterestAsync(gathering.Id, "alex-session", game.Id, false);
+        await _service.RemoveGameAsync(gathering.Id, "alex-session", game.Id);
+        gathering = (await _service.GetByShareCodeAsync(gathering.ShareCode))!;
+        Assert.That(gathering.Games.Single().Name, Is.EqualTo("Azul"));
+    }
+
+    [Test]
+    public async Task Removal_ProtectsOtherMembersGamesAndHistoricalGames()
+    {
+        var gathering = await _service.CreateAsync("Weekend", _host);
+        await _service.JoinAsync(gathering.Id, "Alex", "alex-session");
+        await _service.JoinAsync(gathering.Id, "Bea", "bea-session");
+        foreach (var name in new[] { "Dune", "Azul", "Cascadia" })
+            await _service.AddGameAsync(gathering.Id, "alex-session", Candidate(name));
+        var games = (await _service.GetByShareCodeAsync(gathering.ShareCode))!.Games;
+        Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.RemoveGameAsync(gathering.Id, "bea-session", games[0].Id));
+        await _service.StartVoteAsync(gathering.Id, _host, "Legacy round", [games[0].Id, games[1].Id]);
+        await _service.MarkPlayedAsync(gathering.Id, _host, games[2].Id);
+        foreach (var game in games)
+            Assert.ThrowsAsync<InvalidOperationException>(() => _service.RemoveGameAsync(gathering.Id, "alex-session", game.Id, _host));
+        Assert.That((await _service.GetByShareCodeAsync(gathering.ShareCode))!.Games, Has.Count.EqualTo(3));
     }
 
     private static GameCandidate Candidate(string name) => new(name, null, null, null);

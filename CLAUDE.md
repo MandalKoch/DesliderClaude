@@ -223,3 +223,10 @@ DesliderClaude.slnx
 - Gathering members can remove their own unused suggestions; the signed-in host can also remove them. Confirmed games and games used by a round or played history cannot be deleted through this action. Browser filtering does not change suggestions, bring assignments, or voting history.
 
 - Gathering browsing/search/filter controls use enhanced POSTs, carrying picker context in encoded hidden form fields across actions. Legacy query URLs still initialize that context on first load. Section links use the current gathering URL plus fragment because bare fragment links resolve against the app's root `<base>` and can navigate away from the gathering.
+
+### 2026-10-29 — Gathering landing page and ongoing voting
+
+- Gatherings now use a shared game landing page, a separate `/gathering/{shareCode}/games` picker, and `/gathering/{shareCode}/vote` for Play/Pass swipes. New games enter directly, with the contributor recorded as the bringer; no host approval is required.
+- One ongoing gathering vote uses existing `GatheringInterest` records, preserving previous interest choices. Newly added games remain available to members who finished voting earlier. Legacy round results and played history remain preserved.
+- Hosts can close or reopen gathering voting. The additive `AddGatheringVotingState` migration defaults existing gatherings to open. Services reject additions, removals, and vote changes while closed; author/host removal permissions and historical game protections remain in force.
+- Verification: all 42 solution tests pass, including mobile picker and swipe scroll preservation, guest additions, vote editing, late additions, and host close/reopen. Mobile and desktop layouts were visually checked in Chromium; physical devices and Safari were not checked.

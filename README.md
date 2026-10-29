@@ -27,7 +27,7 @@ Not a review site. Not a rating service. Just: *"of these 12 games, which do we 
 
 **Playing tonight?** Start a game night, choose games from your collection or add them by name, and share the voting link. Friends join with a display name and vote yes or no. They can change their votes until the host closes voting.
 
-**Planning a weekend?** Create a gathering and share one invitation. Everyone can suggest games and show interest. The host confirms a bring list and assigns who brings each game. When you are together, start fresh game votes from that list and record what you actually played. Repeat votes keep their own results, and played games remain available for another go.
+**Planning a weekend?** Create a gathering and share one invitation. Everyone adds games directly to the shared bring list, then visits a separate swipe page to choose what they would play. New games join the same ongoing vote. The host closes voting when the group is ready, locking votes and game additions.
 
 No date is required. Browse saved BoardGameGeek collections and GeekLists, or search BGG by name. Tap a game to add it to your night or gathering; manual entry remains available.
 

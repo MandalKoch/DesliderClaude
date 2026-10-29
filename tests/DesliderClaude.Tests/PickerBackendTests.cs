@@ -146,7 +146,7 @@ public sealed class PickerBackendTests
     }
 
     [Test]
-    public async Task SuggestionRemoval_PreservesConfirmedGamesVotesAndPlayedHistoryAndRejectsCrossIds()
+    public async Task SuggestionRemoval_PreservesVotesAndPlayedHistoryAndRejectsCrossIds()
     {
         var gathering = await _gatherings.CreateAsync("Weekend", _host);
         var other = await _gatherings.CreateAsync("Other", _host);
@@ -158,7 +158,6 @@ public sealed class PickerBackendTests
         Assert.ThrowsAsync<InvalidOperationException>(() => _gatherings.RemoveGameAsync(other.Id, "other", ids[0], _host));
         foreach (var id in ids)
             await _gatherings.ConfirmGameAsync(gathering.Id, _host, id, true, null);
-        Assert.ThrowsAsync<InvalidOperationException>(() => _gatherings.RemoveGameAsync(gathering.Id, "host", ids[0], _host));
         var round = await _gatherings.StartVoteAsync(gathering.Id, _host, "Next?", ids);
         await _gatherings.MarkPlayedAsync(gathering.Id, _host, ids[0]);
         foreach (var id in ids)

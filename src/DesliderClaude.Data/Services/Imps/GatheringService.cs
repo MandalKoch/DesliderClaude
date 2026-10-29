@@ -70,6 +70,7 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
     public async Task AddGameAsync(Guid gatheringId, string memberToken, GameCandidate candidate, CancellationToken ct = default)
     {
         var member = await RequireMemberAsync(gatheringId, memberToken, ct);
+        await RequireVotingOpenAsync(gatheringId, ct);
         if (candidate.BggGameId is int bggId)
         {
             var cached = await db.BggGames.AsNoTracking().FirstOrDefaultAsync(g => g.BggGameId == bggId && g.Type == "boardgame", ct)
@@ -86,6 +87,8 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
         {
             GatheringId = gatheringId,
             SuggestedByMemberId = member.Id,
+            IsConfirmed = true,
+            BringerMemberId = member.Id,
             Name = name,
             BggGameId = candidate.BggGameId,
             ImageUrl = ImageUrl(candidate.ImageUrl),
@@ -97,12 +100,11 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
     public async Task RemoveGameAsync(Guid gatheringId, string memberToken, Guid gameId, Guid? requestingUserId = null, CancellationToken ct = default)
     {
         var member = await RequireMemberAsync(gatheringId, memberToken, ct);
+        await RequireVotingOpenAsync(gatheringId, ct);
         var game = await RequireGameAsync(gatheringId, gameId, ct);
         var isHost = requestingUserId is not null && await db.Gatherings.AnyAsync(g => g.Id == gatheringId && g.CreatedByUserId == requestingUserId, ct);
         if (game.SuggestedByMemberId != member.Id && !isHost)
             throw new UnauthorizedAccessException("Only the person who suggested this game or the host can remove it.");
-        if (game.IsConfirmed)
-            throw new InvalidOperationException("Remove this game from the bring list before removing its suggestion.");
         if (await db.Games.AnyAsync(g => g.GatheringGameId == gameId, ct)
             || await db.GatheringPlayedGames.AnyAsync(g => g.GatheringGameId == gameId, ct))
             throw new InvalidOperationException("Games used in a vote or played history must stay in the gathering.");
@@ -113,12 +115,21 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
     public async Task SetInterestAsync(Guid gatheringId, string memberToken, Guid gameId, bool interested, CancellationToken ct = default)
     {
         var member = await RequireMemberAsync(gatheringId, memberToken, ct);
+        await RequireVotingOpenAsync(gatheringId, ct);
         await RequireGameAsync(gatheringId, gameId, ct);
         var interest = await db.GatheringInterests.FindAsync([gameId, member.Id], ct);
         if (interest is null)
             db.GatheringInterests.Add(new GatheringInterest { GatheringGameId = gameId, MemberId = member.Id, Interested = interested });
         else
             interest.Interested = interested;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task SetVotingClosedAsync(Guid gatheringId, Guid hostUserId, bool isClosed, CancellationToken ct = default)
+    {
+        await RequireHostAsync(gatheringId, hostUserId, ct);
+        var gathering = await db.Gatherings.SingleAsync(x => x.Id == gatheringId, ct);
+        gathering.IsVotingClosed = isClosed;
         await db.SaveChangesAsync(ct);
     }
 
@@ -173,6 +184,12 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
         await db.SaveChangesAsync(ct);
     }
 
+    private async Task RequireVotingOpenAsync(Guid gatheringId, CancellationToken ct)
+    {
+        if (await db.Gatherings.AnyAsync(x => x.Id == gatheringId && x.IsVotingClosed, ct))
+            throw new InvalidOperationException("Voting is closed. The host can reopen it to add games or change votes.");
+    }
+
     private async Task<GatheringMember> RequireMemberAsync(Guid gatheringId, string token, CancellationToken ct)
         => await db.GatheringMembers.FirstOrDefaultAsync(x => x.GatheringId == gatheringId && x.Token == token, ct)
             ?? throw new UnauthorizedAccessException("Join this gathering first.");
@@ -224,5 +241,6 @@ internal sealed class GatheringService(DesliderClaudeDbContext db, IShareCodeGen
                 g.Interests.Select(i => new GatheringInterestView(i.MemberId, i.Interested)).ToList(),
                 x.Rounds.Any(n => n.Games.Any(r => r.GatheringGameId == g.Id)))).ToList(),
             x.Rounds.OrderByDescending(n => n.CreatedAt).Select(n => new GatheringRoundView(n.Id, n.Name, n.ShareCode, n.IsClosed, n.CreatedAt)).ToList(),
-            x.PlayedGames.OrderByDescending(p => p.PlayedAt).Select(p => new GatheringPlayedGameView(p.Id, p.GatheringGameId, p.GatheringGame.Name, p.PlayedAt)).ToList());
+            x.PlayedGames.OrderByDescending(p => p.PlayedAt).Select(p => new GatheringPlayedGameView(p.Id, p.GatheringGameId, p.GatheringGame.Name, p.PlayedAt)).ToList(),
+            x.IsVotingClosed);
 }

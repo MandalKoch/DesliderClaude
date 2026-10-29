@@ -242,6 +242,9 @@ namespace DesliderClaude.Data.Migrations
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsVotingClosed")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

@@ -1,0 +1,131 @@
+@page "/gathering/{ShareCode}/vote"
+@using System.Globalization
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IGatheringService Gatherings
+
+<PageTitle>Vote — @(_gathering?.Name ?? "Gathering")</PageTitle>
+
+<div class="gathering-vote">
+    <a class="gathering-back" href="/gathering/@ShareCode">← @(_gathering?.Name ?? "Back to gathering") · All games</a>
+    @if (_gathering is null)
+    {
+        <h1>Gathering not found.</h1>
+    }
+    else if (_member is null)
+    {
+        <h1>Pull up a chair.</h1><p><a href="/gathering/@ShareCode">Join the gathering to vote →</a></p>
+    }
+    else
+    {
+        <div class="swipe-progress"><span class="swipe-progress-label"><strong>@VotedCount</strong> / @_gathering.Games.Count voted</span><span class="swipe-progress-bar"><span class="swipe-progress-fill" style="transform: scaleX(@ProgressRatio)"></span></span></div>
+        @if (_error is not null) { <p class="text-danger" role="alert">@_error</p> }
+        @if (_gathering.IsVotingClosed)
+        {
+            <div class="vote-complete"><span class="eyebrow">The table is set</span><h1>Voting is closed.</h1><p>Your votes are saved. The host can reopen voting for more games.</p><a class="btn btn-primary" href="/gathering/@ShareCode">See the group's picks →</a></div>
+        }
+        else if (_currentGame is null)
+        {
+            <div class="vote-complete"><span class="eyebrow">You're all caught up</span><h1>@(_gathering.Games.Count == 0 ? "The table is open." : "Your votes are in.")</h1><p>@(_gathering.Games.Count == 0 ? "Add a game to get things started." : "When someone adds another game, come back to vote on it. You can change your votes below.")</p><div class="complete-actions"><a class="btn btn-primary" href="/gathering/@ShareCode">Back to the table →</a><a class="btn btn-ghost" href="/gathering/@ShareCode/games">＋ Add games</a></div></div>
+        }
+        else
+        {
+            <div class="swipe-wrap">
+                <div class="swipe-stage">
+                    <article class="swipe-card @(string.IsNullOrEmpty(_currentGame.ImageUrl ?? _currentGame.ThumbnailUrl) ? "swipe-card-noart" : "swipe-card-withart")" data-swipe-card>
+                        <div class="swipe-card-corners"></div>
+                        @if (!string.IsNullOrEmpty(_currentGame.ImageUrl ?? _currentGame.ThumbnailUrl)) { <img class="swipe-card-art" src="@(_currentGame.ImageUrl ?? _currentGame.ThumbnailUrl)" alt="" referrerpolicy="no-referrer" loading="eager" decoding="async" draggable="false" /> }
+                        <div class="swipe-card-label">Brought by @MemberName(_currentGame.BringerMemberId ?? _currentGame.SuggestedByMemberId)</div>
+                        <h1 class="swipe-card-title">@_currentGame.Name</h1>
+                        <div class="swipe-stamp swipe-stamp-yes" data-swipe-overlay-yes aria-hidden="true"><span class="swipe-stamp-icon">✓</span><span class="swipe-stamp-label">Play</span></div>
+                        <div class="swipe-stamp swipe-stamp-no" data-swipe-overlay-no aria-hidden="true"><span class="swipe-stamp-icon">✕</span><span class="swipe-stamp-label">Pass</span></div>
+                    </article>
+                    <p class="swipe-hint">Swipe the card or choose Play / Pass.</p>
+                </div>
+                <form method="post" @formname="gathering-swipe" @onsubmit="RecordAsync" data-enhance data-swipe-form>
+                    <AntiforgeryToken /><input type="hidden" name="Form.GameId" value="@_currentGame.Id" />
+                    <div class="swipe-actions"><button type="submit" name="Form.Interested" value="true" class="swipe-btn swipe-btn-yes" data-swipe-yes><span class="emoji" aria-hidden="true">✓</span>Play</button><button type="submit" name="Form.Interested" value="false" class="swipe-btn swipe-btn-no" data-swipe-no><span class="emoji" aria-hidden="true">✕</span>Pass</button></div>
+                </form>
+                <div class="swipe-footlinks">
+                    @if (_currentGame.BggGameId is int bggGameId)
+                    {
+                        <a href="@($"https://boardgamegeek.com/boardgame/{bggGameId}")" target="_blank" rel="noopener noreferrer" aria-label="@($"Open {_currentGame.Name} on BoardGameGeek (opens in a new tab)")">Open on BoardGameGeek ↗</a>
+                    }
+                    <a href="@($"/gathering/{ShareCode}/vote#my-votes")">My votes</a><a href="/gathering/@ShareCode">See all games</a>
+                </div>
+            </div>
+        }
+        <section id="my-votes" class="my-votes" aria-labelledby="my-votes-title">
+            <h2 id="my-votes-title">My votes</h2>
+            @if (VotedCount == 0) { <p class="subtle">Your choices will appear here.</p> }
+            else
+            {
+                <ul class="vote-list">
+                @foreach (var game in _gathering.Games.Where(HasVoted).OrderBy(g => g.Name))
+                {
+                    var interested = game.Interests.First(i => i.MemberId == _member.Id).Interested;
+                    <li><div><strong>@game.Name</strong><span>@(interested ? "Play" : "Pass")</span></div>
+                        @if (!_gathering.IsVotingClosed)
+                        {
+                            <form method="post" @formname="@($"gathering-edit-{game.Id}")" @onsubmit="RecordAsync" data-enhance><AntiforgeryToken /><input type="hidden" name="Form.GameId" value="@game.Id" /><div class="edit-vote-actions"><button class="btn btn-sm @(interested ? "btn-primary" : "btn-ghost")" type="submit" name="Form.Interested" value="true" aria-pressed="@(interested ? "true" : "false")" aria-label="@($"Play {game.Name}")">Play</button><button class="btn btn-ghost btn-sm" type="submit" name="Form.Interested" value="false" aria-pressed="@(!interested ? "true" : "false")" aria-label="@($"Pass {game.Name}")">Pass</button></div></form>
+                        }
+                    </li>
+                }
+                </ul>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+    [SupplyParameterFromForm] public GatheringVoteForm? Form { get; set; }
+    private GatheringView? _gathering;
+    private GatheringMemberView? _member;
+    private GatheringGameView? _currentGame;
+    private string? _memberToken;
+    private string? _error;
+    private int VotedCount => _gathering?.Games.Count(HasVoted) ?? 0;
+    private string ProgressRatio => (_gathering?.Games.Count > 0 ? (double)VotedCount / _gathering.Games.Count : 0).ToString("0.###", CultureInfo.InvariantCulture);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
+        if (_gathering is null) return;
+        _memberToken = HttpContext?.Request.Cookies[$"deslider-gathering-{ShareCode}"];
+        if (_memberToken is not null) _member = await Gatherings.GetMemberAsync(_gathering.Id, _memberToken);
+        PickNextGame();
+    }
+
+    private bool HasVoted(GatheringGameView game) => game.Interests.Any(i => i.MemberId == _member?.Id);
+    private string MemberName(Guid id) => _gathering?.Members.FirstOrDefault(m => m.Id == id)?.DisplayName ?? "A friend";
+    private void PickNextGame()
+    {
+        var unvoted = _gathering?.Games.Where(g => !HasVoted(g)).ToArray() ?? [];
+        _currentGame = unvoted.Length > 0 ? unvoted[Random.Shared.Next(unvoted.Length)] : null;
+    }
+
+    private async Task RecordAsync()
+    {
+        if (_gathering is null || _member is null || _memberToken is null || Form is null) return;
+        try
+        {
+            await Gatherings.SetInterestAsync(_gathering.Id, _memberToken, Form.GameId, Form.Interested);
+            _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
+            PickNextGame();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            _error = ex.Message;
+            _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
+            PickNextGame();
+        }
+    }
+
+    public sealed class GatheringVoteForm
+    {
+        public Guid GameId { get; set; }
+        public bool Interested { get; set; }
+    }
+}

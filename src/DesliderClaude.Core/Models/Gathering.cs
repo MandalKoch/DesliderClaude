@@ -6,6 +6,7 @@ public class Gathering
     public string Name { get; set; } = string.Empty;
     public string ShareCode { get; set; } = string.Empty;
     public Guid? CreatedByUserId { get; set; }
+    public bool IsVotingClosed { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public ICollection<GatheringMember> Members { get; set; } = new List<GatheringMember>();
     public ICollection<GatheringGame> Games { get; set; } = new List<GatheringGame>();

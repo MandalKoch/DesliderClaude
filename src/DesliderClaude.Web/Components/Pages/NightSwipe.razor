@@ -102,6 +102,10 @@ else
         </form>
 
         <div class="swipe-footlinks">
+            @if (_currentGame.BggGameId is int bggGameId)
+            {
+                <a href="@($"https://boardgamegeek.com/boardgame/{bggGameId}")" target="_blank" rel="noopener noreferrer" aria-label="@($"Open {_currentGame.Name} on BoardGameGeek (opens in a new tab)")">Open on BoardGameGeek ↗</a>
+            }
             <a href="/night/@ShareCode/votes">My votes</a>
             <a href="/night/@ShareCode/winner">Peek at the pick</a>
             @if (_isHost)

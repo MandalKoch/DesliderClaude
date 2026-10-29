@@ -1,0 +1,35 @@
+.gathering-vote { max-width: 760px; margin: 0 auto; }
+.gathering-back { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); }
+.eyebrow { color: var(--sage); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
+.vote-complete { padding: 3rem 0; }
+.vote-complete h1 { font-size: clamp(2.3rem, 8vw, 4rem); line-height: 1.1; margin: 1rem 0; }
+.vote-complete p { max-width: 34rem; line-height: 1.7; }
+.complete-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+.my-votes { margin-top: 3rem; scroll-margin-top: 2rem; }
+.my-votes h2 { font-family: var(--font-body); font-size: 1.5rem; }
+.vote-list { list-style: none; padding: 0; margin: 1rem 0; }
+.vote-list li { display: flex; gap: 1rem; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+.vote-list li > div { min-width: 0; }
+.vote-list strong { display: block; overflow-wrap: anywhere; }
+.vote-list li span { display: block; font-size: .8rem; color: var(--text-muted); margin-top: .25rem; }
+.edit-vote-actions { display: flex; gap: .5rem; }
+.edit-vote-actions .btn { min-height: 44px; }
+@media (max-width: 400px) { .vote-list li { flex-wrap: wrap; } }
+.gathering-vote .swipe-card { background: linear-gradient(135deg, #4b4030, #28241e); clip-path: none; border-radius: 1.2rem; border-color: #695749; min-height: 42vh; }
+.gathering-vote .swipe-card::before { background: radial-gradient(ellipse at 35% 20%, #b59c5a22, transparent 65%); }
+.gathering-vote .swipe-card-withart::before { background: linear-gradient(to bottom, #211c1633 0%, #211c1677 50%, #211c16ee 100%); }
+.gathering-vote .swipe-card::after, .gathering-vote .swipe-card-corners { display: none; }
+.gathering-vote .swipe-card-label { font-family: var(--font-body); text-transform: none; letter-spacing: .03em; color: #f4e8d5; background: #211c16aa; border-color: #c0b2a255; border-radius: 2rem; }
+.gathering-vote .swipe-card-title { text-shadow: 0 2px 24px #0008; }
+.gathering-vote .swipe-btn { font-family: var(--font-body); text-transform: none; letter-spacing: 0; clip-path: none; border-radius: .8rem; }
+.gathering-vote .swipe-btn-yes { background: #c5d9a6; color: #242b1c; border-color: #c5d9a6; box-shadow: none; }
+.gathering-vote .swipe-btn-yes:hover { background: #dce8ca; }
+.gathering-vote .swipe-btn-no { background: #e9a5821a; color: #efb99b; border-color: #a5755b; }
+.gathering-vote .swipe-btn-no:hover { background: #e9a58230; box-shadow: none; }
+.gathering-vote .swipe-progress-fill { background: linear-gradient(90deg, #c5d9a6, #e9a582); box-shadow: none; }
+.gathering-vote .swipe-progress-label, .gathering-vote .swipe-hint { font-family: var(--font-body); text-transform: none; letter-spacing: 0; }
+.gathering-vote .eyebrow { color: #c5d9a6; }
+.gathering-vote .btn:focus-visible, .gathering-vote a:focus-visible, .gathering-vote .swipe-btn:focus-visible { outline: 3px solid #e9a582; outline-offset: 4px; }
+.gathering-back { min-height: 44px; padding-block: .6rem; }
+.gathering-vote .swipe-footlinks a { min-height: 44px; display: inline-flex; align-items: center; font-family: var(--font-body); text-transform: none; letter-spacing: 0; }
+.gathering-vote .swipe-card-title { max-width: 100%; overflow-wrap: anywhere; }
