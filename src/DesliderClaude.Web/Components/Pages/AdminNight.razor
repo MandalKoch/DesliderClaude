@@ -43,6 +43,7 @@ else
     }
     else
     {
+        <div class="admin-table-scroll" role="region" aria-label="Night voters" tabindex="0">
         <table class="admin-table">
             <thead>
                 <tr>
@@ -84,6 +85,18 @@ else
                 }
             </tbody>
         </table>
+        </div>
+        <section class="admin-choices" aria-labelledby="night-choices-title">
+            <h2 id="night-choices-title">Choices by voter</h2>
+            <p class="subtle">Each person's latest choice for every game. Visible only in admin.</p>
+            @foreach (var voter in _voters)
+            {
+                <details class="admin-participant"><summary><strong>@voter.DisplayName</strong><span>@voter.SwipeCount / @voter.Choices.Count voted</span></summary>
+                    @if (voter.Choices.Count == 0) { <p class="subtle">No games in this night.</p> }
+                    else { <ul class="admin-choice-list">@foreach (var choice in voter.Choices) { <li><span>@choice.GameName</span><strong class="@(choice.Yes == true ? "choice-play" : choice.Yes == false ? "choice-pass" : "choice-unvoted")">@(choice.Yes == true ? "Play" : choice.Yes == false ? "Pass" : "Not voted")</strong></li> }</ul> }
+                </details>
+            }
+        </section>
     }
 }
 

@@ -32,7 +32,13 @@ internal sealed partial class AdminService : IAdminService
             ClosedNightCount: await _db.GameNights.CountAsync(n => n.IsClosed, ct),
             VoterCount: await _db.Voters.CountAsync(ct),
             SwipeCount: swipeTimes.Count,
-            SwipesLast24h: swipeTimes.Count(t => t >= since));
+            SwipesLast24h: swipeTimes.Count(t => t >= since),
+            GatheringCount: await _db.Gatherings.CountAsync(ct),
+            OpenGatheringCount: await _db.Gatherings.CountAsync(g => !g.IsVotingClosed, ct),
+            ClosedGatheringCount: await _db.Gatherings.CountAsync(g => g.IsVotingClosed, ct),
+            GatheringMemberCount: await _db.GatheringMembers.CountAsync(ct),
+            GatheringGameCount: await _db.GatheringGames.CountAsync(ct),
+            GatheringVoteCount: await _db.GatheringInterests.CountAsync(ct));
     }
 
     public async Task<IReadOnlyList<AdminUserRow>> ListUsersAsync(CancellationToken ct = default)
@@ -84,6 +90,48 @@ internal sealed partial class AdminService : IAdminService
                 n.Voters.SelectMany(v => v.Swipes).Count()))
             .ToListAsync(ct);
         return rows.OrderByDescending(r => r.CreatedAt).ToList();
+    }
+
+    private IQueryable<AdminGatheringRow> GatheringRows(string? shareCode = null) => _db.Gatherings.AsNoTracking()
+        .Where(g => shareCode == null || g.ShareCode == shareCode)
+        .Select(g => new AdminGatheringRow(
+            g.Id, g.ShareCode, g.Name,
+            _db.Users.Where(u => u.Id == g.CreatedByUserId).Select(u => u.Username).FirstOrDefault(),
+            g.IsVotingClosed, g.CreatedAt, g.Members.Count, g.Games.Count,
+            g.Games.SelectMany(game => game.Interests).Count()));
+
+    public async Task<IReadOnlyList<AdminGatheringRow>> ListGatheringsAsync(CancellationToken ct = default)
+        => (await GatheringRows().ToListAsync(ct)).OrderByDescending(g => g.CreatedAt).ToList();
+
+    public async Task<AdminGatheringDetail?> GetGatheringDetailAsync(string shareCode, CancellationToken ct = default)
+    {
+        var gathering = await GatheringRows(shareCode).SingleOrDefaultAsync(ct);
+        if (gathering is null) return null;
+        var games = await _db.GatheringGames.AsNoTracking().Where(g => g.GatheringId == gathering.Id)
+            .OrderBy(g => g.Name)
+            .Select(g => new AdminGatheringGame(g.Id, g.Name, g.BringerMember == null ? null : g.BringerMember.DisplayName))
+            .ToListAsync(ct);
+        var members = await _db.GatheringMembers.AsNoTracking().Where(m => m.GatheringId == gathering.Id)
+            .OrderBy(m => m.DisplayName)
+            .Select(m => new
+            {
+                m.Id,
+                m.DisplayName,
+                Username = _db.Users.Where(u => u.Id == m.UserId).Select(u => u.Username).FirstOrDefault()
+            }).ToListAsync(ct);
+        var interests = await _db.GatheringInterests.AsNoTracking()
+            .Where(i => i.GatheringGame.GatheringId == gathering.Id)
+            .Select(i => new { i.GatheringGameId, i.MemberId, i.Interested }).ToListAsync(ct);
+        var choices = interests.ToDictionary(i => (i.GatheringGameId, i.MemberId), i => i.Interested);
+        var participants = members.Select(m => new AdminGatheringMember(m.Id, m.DisplayName, m.Username,
+            games.Select(g => new AdminGameChoice(g.Id, g.Name,
+                choices.TryGetValue((g.Id, m.Id), out var yes) ? yes : (bool?)null)).ToList())).ToList();
+        var rounds = await _db.GameNights.AsNoTracking().Where(n => n.GatheringId == gathering.Id)
+            .Select(n => new GatheringRoundView(n.Id, n.Name, n.ShareCode, n.IsClosed, n.CreatedAt)).ToListAsync(ct);
+        var played = await _db.GatheringPlayedGames.AsNoTracking().Where(p => p.GatheringId == gathering.Id)
+            .Select(p => new GatheringPlayedGameView(p.Id, p.GatheringGameId, p.GatheringGame.Name, p.PlayedAt)).ToListAsync(ct);
+        return new AdminGatheringDetail(gathering, games, participants,
+            rounds.OrderByDescending(r => r.CreatedAt).ToList(), played.OrderByDescending(p => p.PlayedAt).ToList());
     }
 
     public async Task<IReadOnlyList<GamePopularityRow>> TopGamesAsync(int take = 10, CancellationToken ct = default)
@@ -140,16 +188,24 @@ internal sealed partial class AdminService : IAdminService
 
     public async Task<IReadOnlyList<AdminVoterRow>> ListVotersForNightAsync(Guid nightId, CancellationToken ct = default)
     {
-        return await _db.Voters
-            .Where(v => v.GameNightId == nightId)
-            .Select(v => new AdminVoterRow(
+        var games = await _db.Games.AsNoTracking().Where(g => g.GameNightId == nightId)
+            .OrderBy(g => g.Name).Select(g => new { g.Id, g.Name }).ToListAsync(ct);
+        var voters = await _db.Voters.AsNoTracking().Where(v => v.GameNightId == nightId)
+            .Select(v => new
+            {
                 v.Id,
                 v.DisplayName,
-                v.User == null ? null : v.User.Username,
-                v.Swipes.Count,
-                v.Swipes.Count(s => s.Yes),
-                v.Swipes.Count(s => !s.Yes)))
-            .ToListAsync(ct);
+                Username = v.User == null ? null : v.User.Username,
+                Swipes = v.Swipes.Select(s => new { s.GameId, s.Yes }).ToList()
+            }).ToListAsync(ct);
+        return voters.OrderBy(v => v.DisplayName).Select(v =>
+        {
+            var choices = v.Swipes.ToDictionary(s => s.GameId, s => s.Yes);
+            return new AdminVoterRow(v.Id, v.DisplayName, v.Username, v.Swipes.Count,
+                v.Swipes.Count(s => s.Yes), v.Swipes.Count(s => !s.Yes),
+                games.Select(g => new AdminGameChoice(g.Id, g.Name,
+                    choices.TryGetValue(g.Id, out var yes) ? yes : (bool?)null)).ToList());
+        }).ToList();
     }
 
     public async Task DeleteVoterAsync(Guid voterId, CancellationToken ct = default)

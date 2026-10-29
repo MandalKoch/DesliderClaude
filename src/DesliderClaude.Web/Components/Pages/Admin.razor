@@ -19,11 +19,21 @@ else
     <div class="admin-stats">
         <div class="admin-stat"><span class="admin-stat-num">@_overview.UserCount</span><span class="admin-stat-label">Users</span></div>
         <div class="admin-stat"><span class="admin-stat-num">@_overview.NightCount</span><span class="admin-stat-label">Nights</span></div>
-        <div class="admin-stat"><span class="admin-stat-num">@_overview.OpenNightCount</span><span class="admin-stat-label">Open</span></div>
-        <div class="admin-stat"><span class="admin-stat-num">@_overview.ClosedNightCount</span><span class="admin-stat-label">Closed</span></div>
-        <div class="admin-stat"><span class="admin-stat-num">@_overview.VoterCount</span><span class="admin-stat-label">Voters</span></div>
-        <div class="admin-stat"><span class="admin-stat-num">@_overview.SwipeCount</span><span class="admin-stat-label">Swipes</span></div>
-        <div class="admin-stat"><span class="admin-stat-num">@_overview.SwipesLast24h</span><span class="admin-stat-label">Swipes / 24h</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.OpenNightCount</span><span class="admin-stat-label">Open nights</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.ClosedNightCount</span><span class="admin-stat-label">Closed nights</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.VoterCount</span><span class="admin-stat-label">Night voters</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.SwipeCount</span><span class="admin-stat-label">Night swipes</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.SwipesLast24h</span><span class="admin-stat-label">Night swipes / 24h</span></div>
+    </div>
+
+    <h2 class="kicker">Gathering activity</h2>
+    <div class="admin-stats gathering-stats">
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.GatheringCount</span><span class="admin-stat-label">Gatherings</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.OpenGatheringCount</span><span class="admin-stat-label">Voting open</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.ClosedGatheringCount</span><span class="admin-stat-label">Voting closed</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.GatheringMemberCount</span><span class="admin-stat-label">Memberships</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.GatheringGameCount</span><span class="admin-stat-label">Gathering games</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_overview.GatheringVoteCount</span><span class="admin-stat-label">Gathering votes</span></div>
     </div>
 
     @if (!string.IsNullOrEmpty(_error))
@@ -35,11 +45,14 @@ else
         <a href="/admin?tab=nights" class="admin-tab @(_activeTab == "nights" ? "is-active" : null)">
             Nights <span class="admin-tab-count">@_nights.Count</span>
         </a>
+        <a href="/admin?tab=gatherings" class="admin-tab @(_activeTab == "gatherings" ? "is-active" : null)">
+            Gatherings <span class="admin-tab-count">@_gatherings.Count</span>
+        </a>
         <a href="/admin?tab=users" class="admin-tab @(_activeTab == "users" ? "is-active" : null)">
             Users <span class="admin-tab-count">@_users.Count</span>
         </a>
         <a href="/admin?tab=games" class="admin-tab @(_activeTab == "games" ? "is-active" : null)">
-            Top games <span class="admin-tab-count">@_topGames.Count</span>
+            Top night games <span class="admin-tab-count">@_topGames.Count</span>
         </a>
     </nav>
 
@@ -51,14 +64,15 @@ else
         }
         else
         {
+            <div class="admin-table-scroll" role="region" aria-label="Admin records" tabindex="0">
             <table class="admin-table">
                 <thead>
                     <tr>
                         <th>Username</th>
                         <th>Sign-in</th>
-                        <th class="right">Hosted</th>
-                        <th class="right">Voted in</th>
-                        <th class="right">Swipes</th>
+                        <th class="right">Nights hosted</th>
+                        <th class="right">Nights voted in</th>
+                        <th class="right">Night swipes</th>
                         <th>Registered</th>
                         <th></th>
                     </tr>
@@ -115,6 +129,25 @@ else
                     }
                 </tbody>
             </table>
+            </div>
+        }
+    }
+    else if (_activeTab == "gatherings")
+    {
+        @if (_gatherings.Count == 0)
+        {
+            <p class="subtle">No gatherings yet.</p>
+        }
+        else
+        {
+            <div class="admin-table-scroll" role="region" aria-label="Gatherings" tabindex="0">
+            <table class="admin-table gatherings-table"><thead><tr><th>Name</th><th>Host</th><th>Status</th><th class="right">Games</th><th class="right">Members</th><th class="right">Votes</th><th>Created</th></tr></thead><tbody>
+                @foreach (var gathering in _gatherings)
+                {
+                    <tr><td><a class="admin-row-link" href="/admin/gatherings/@gathering.ShareCode">@gathering.Name</a><div class="admin-row-links"><a class="admin-row-sub" href="/gathering/@gathering.ShareCode">Public gathering</a></div></td><td>@(gathering.HostUsername ?? "—")</td><td><span class="nights-badge @(gathering.IsVotingClosed ? "closed" : "warn")">@(gathering.IsVotingClosed ? "Closed" : "Open")</span></td><td class="right">@gathering.GameCount</td><td class="right">@gathering.MemberCount</td><td class="right">@gathering.VoteCount</td><td>@gathering.CreatedAt.ToString("MMM d, HH:mm")</td></tr>
+                }
+            </tbody></table>
+            </div>
         }
     }
     else if (_activeTab == "games")
@@ -147,6 +180,7 @@ else
         }
         else
         {
+            <div class="admin-table-scroll" role="region" aria-label="Admin records" tabindex="0">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -154,7 +188,7 @@ else
                         <th>Host</th>
                         <th class="right">Games</th>
                         <th class="right">Voters</th>
-                        <th class="right">Swipes</th>
+                        <th class="right">Night swipes</th>
                         <th>Status</th>
                         <th>Created</th>
                         <th></th>
@@ -217,6 +251,7 @@ else
                     }
                 </tbody>
             </table>
+            </div>
         }
     }
 }
@@ -233,6 +268,7 @@ else
 
     private AdminOverview? _overview;
     private IReadOnlyList<AdminUserRow> _users = Array.Empty<AdminUserRow>();
+    private IReadOnlyList<AdminGatheringRow> _gatherings = Array.Empty<AdminGatheringRow>();
     private IReadOnlyList<AdminNightRow> _nights = Array.Empty<AdminNightRow>();
     private IReadOnlyList<GamePopularityRow> _topGames = Array.Empty<GamePopularityRow>();
     private Guid? _currentUserId;
@@ -242,6 +278,7 @@ else
     {
         "users" => "users",
         "games" => "games",
+        "gatherings" => "gatherings",
         _ => "nights",
     };
 
@@ -260,6 +297,7 @@ else
         _overview = await AdminSvc.GetOverviewAsync();
         _users = await AdminSvc.ListUsersAsync();
         _nights = await AdminSvc.ListNightsAsync();
+        _gatherings = await AdminSvc.ListGatheringsAsync();
         _topGames = await AdminSvc.TopGamesAsync();
     }
 

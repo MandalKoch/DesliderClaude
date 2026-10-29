@@ -1,0 +1,6 @@
+.admin-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.admin-table-scroll:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.admin-table { min-width: 640px; }
+.admin-stat { background: linear-gradient(135deg, #302a26, #211f1c); }
+.gathering-stats { margin-top: .75rem; }
+.admin-tab { min-height: 44px; }

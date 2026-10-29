@@ -1,0 +1,16 @@
+.admin-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.admin-table-scroll:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.admin-table { min-width: 540px; }
+.admin-choices { margin-top: 2.5rem; }
+.admin-choices h2 { font-family: var(--font-body); font-size: 1.5rem; }
+.admin-participant { background: #25211d; border: 1px solid #514337; border-radius: .8rem; margin: .85rem 0; padding: 0 1rem; }
+.admin-participant summary { min-height: 60px; padding: 1rem 0; cursor: pointer; overflow-wrap: anywhere; }
+.admin-participant summary span { margin-left: .7rem; font-size: .8rem; color: var(--text-muted); }
+.admin-participant summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.admin-choice-list { list-style: none; padding: 0; margin: 0 0 .8rem; }
+.admin-choice-list li { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 0; border-top: 1px solid #514337; }
+.admin-choice-list li > span { min-width: 0; overflow-wrap: anywhere; }
+.admin-choice-list strong { white-space: nowrap; font-size: .85rem; font-weight: 500; }
+.choice-play { color: #c5d9a6; }
+.choice-pass { color: #efb99b; }
+.choice-unvoted { color: var(--text-muted); }

@@ -1,0 +1,74 @@
+@page "/admin/gatherings/{ShareCode}"
+@using DesliderClaude.Core.Models
+@using DesliderClaude.Core.Services
+@inject IAdminService AdminSvc
+
+<PageTitle>Admin · @(_detail?.Gathering.Name ?? ShareCode)</PageTitle>
+
+@if (_detail is null)
+{
+    <h1>Gathering not found.</h1><p><a href="/admin?tab=gatherings">← All gatherings</a></p>
+}
+else
+{
+    <section class="hero">
+        <span class="kicker kicker-gold">Admin · Gathering</span>
+        <h1 class="hero-title">@_detail.Gathering.Name</h1>
+        <p class="hero-lede">Host: @(_detail.Gathering.HostUsername ?? "No linked account") · <span class="nights-badge @(_detail.Gathering.IsVotingClosed ? "closed" : "warn")">@(_detail.Gathering.IsVotingClosed ? "Voting closed" : "Voting open")</span></p>
+        <nav class="admin-detail-links" aria-label="Gathering admin navigation"><a href="/admin?tab=gatherings">← All gatherings</a><a href="/gathering/@ShareCode">Public gathering →</a></nav>
+    </section>
+    <div class="admin-stats">
+        <div class="admin-stat"><span class="admin-stat-num">@_detail.Gathering.MemberCount</span><span class="admin-stat-label">Members</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_detail.Gathering.GameCount</span><span class="admin-stat-label">Games</span></div>
+        <div class="admin-stat"><span class="admin-stat-num">@_detail.Gathering.VoteCount</span><span class="admin-stat-label">Votes</span></div>
+    </div>
+    <section class="gathering-participants" aria-labelledby="participants-title">
+        <h2 id="participants-title">Participants &amp; votes</h2>
+        <p class="subtle">Each person's latest choice for every game. Visible only in admin.</p>
+        @if (_detail.Participants.Count == 0)
+        {
+            <p class="subtle">No one has joined this gathering yet.</p>
+        }
+        @foreach (var participant in _detail.Participants)
+        {
+            var voted = participant.Choices.Count(c => c.Yes is not null);
+            <details class="admin-participant">
+                <summary><strong>@participant.DisplayName</strong><span class="participant-account">@(participant.Username is null ? "Guest" : $"Account: {participant.Username}")</span><span class="participant-progress">@voted / @participant.Choices.Count voted</span></summary>
+                @if (participant.Choices.Count == 0)
+                {
+                    <p class="subtle">No games in this gathering.</p>
+                }
+                else
+                {
+                    <ul class="admin-choice-list">
+                        @foreach (var choice in participant.Choices)
+                        {
+                            <li><span>@choice.GameName</span><strong class="@(choice.Yes == true ? "choice-play" : choice.Yes == false ? "choice-pass" : "choice-unvoted")">@(choice.Yes == true ? "Play" : choice.Yes == false ? "Pass" : "Not voted")</strong></li>
+                        }
+                    </ul>
+                }
+            </details>
+        }
+    </section>
+    <section class="gathering-games" aria-labelledby="games-title">
+        <h2 id="games-title">Games &amp; bringers</h2>
+        @if (_detail.Games.Count == 0) { <p class="subtle">No games added yet.</p> }
+        else
+        {
+            <ul class="admin-game-list">@foreach (var game in _detail.Games) { <li><strong>@game.Name</strong><span>@(game.BringerDisplayName is null ? "No bringer assigned" : $"Brought by {game.BringerDisplayName}")</span></li> }</ul>
+        }
+    </section>
+    @if (_detail.PlayedGames.Count > 0 || _detail.Rounds.Count > 0)
+    {
+        <details class="gathering-history"><summary>Played history &amp; earlier votes</summary>
+            @if (_detail.PlayedGames.Count > 0) { <h3>Played games</h3><ul class="admin-game-list">@foreach (var played in _detail.PlayedGames.OrderByDescending(p => p.PlayedAt)) { <li><strong>@played.GameName</strong><time datetime="@played.PlayedAt.ToString("O")">@played.PlayedAt.ToString("MMM d, HH:mm") UTC</time></li> }</ul> }
+            @if (_detail.Rounds.Count > 0) { <h3>Earlier game votes</h3><ul class="admin-game-list">@foreach (var round in _detail.Rounds.OrderByDescending(r => r.CreatedAt)) { <li><a href="/admin/nights/@round.ShareCode">@round.Name →</a><span>@(round.IsClosed ? "Closed" : "Open")</span></li> }</ul> }
+        </details>
+    }
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+    private AdminGatheringDetail? _detail;
+    protected override async Task OnInitializedAsync() => _detail = await AdminSvc.GetGatheringDetailAsync(ShareCode);
+}

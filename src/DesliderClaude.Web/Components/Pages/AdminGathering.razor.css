@@ -1,0 +1,22 @@
+.admin-detail-links { display: flex; gap: 1rem; flex-wrap: wrap; }
+.admin-detail-links a { display: inline-flex; align-items: center; min-height: 44px; }
+.hero-lede, .admin-game-list span { overflow-wrap: anywhere; }
+h2, h3 { font-family: var(--font-body); letter-spacing: -.02em; }
+h2 { font-size: 1.5rem; }
+.admin-stat, .admin-participant { background: linear-gradient(135deg, #302a26, #211f1c); }
+.gathering-participants, .gathering-games { margin-top: 2.5rem; }
+.admin-participant { border: 1px solid #514337; border-radius: .8rem; margin: .85rem 0; padding: 0 1rem; }
+.admin-participant summary { min-height: 60px; padding: 1rem 0; cursor: pointer; overflow-wrap: anywhere; }
+.participant-account, .participant-progress { display: block; margin: .35rem 0 0 1rem; color: var(--text-muted); font-size: .8rem; }
+summary:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.admin-choice-list, .admin-game-list { list-style: none; padding: 0; margin: 0 0 .8rem; }
+.admin-choice-list li, .admin-game-list li { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 0; border-top: 1px solid #514337; }
+.admin-choice-list li > span, .admin-game-list strong { min-width: 0; overflow-wrap: anywhere; }
+.admin-choice-list strong { white-space: nowrap; font-size: .85rem; font-weight: 500; }
+.choice-play { color: #c5d9a6; }
+.choice-pass { color: #efb99b; }
+.choice-unvoted { color: var(--text-muted); }
+.admin-game-list span, .admin-game-list time { color: var(--text-muted); font-size: .85rem; }
+.gathering-history { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #514337; }
+.gathering-history summary { cursor: pointer; min-height: 44px; }
+@media (max-width: 540px) { .admin-game-list li { flex-direction: column; gap: .35rem; } }
