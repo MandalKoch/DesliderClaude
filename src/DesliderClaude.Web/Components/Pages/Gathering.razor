@@ -21,7 +21,28 @@ else
         <div><span class="eyebrow">Good company. Great games.</span><h1>@(IsPicker ? "Add to the table." : _gathering.Name)</h1></div>
         <span class="people-count">@_gathering.Members.Count people · @_gathering.Games.Count games</span>
     </header>
-    @if (_member is null)
+    @if (ClaimId is not null)
+    {
+        <section class="panel join-panel"><h2>Protect your guest identity.</h2>
+        @if (_claimGuest is null)
+        {
+            <p>This guest is no longer available. Protected participants must sign in with their own account.</p><a href="@GatheringUrl">Back to the table →</a>
+        }
+        else
+        {
+            <p>Keep <strong>@_claimGuest.DisplayName</strong>, their games and votes, and require your account to use this identity.</p><p class="hint">Guest names are shared and unprotected. Only claim the guest you have been using.</p>
+            @if (_userId is not null)
+            {
+                <form method="post" @formname="gathering-protect" @onsubmit="HandleAsync"><AntiforgeryToken /><input type="hidden" name="Form.ExistingGuestId" value="@_claimGuest.Id" /><button class="btn btn-primary" type="submit" name="Form.Action" value="protect">Protect @_claimGuest.DisplayName with my account</button></form>
+            }
+            else
+            {
+                <div class="btn-row"><a class="btn btn-primary" href="@AuthUrl("register")">Create account to protect this guest</a><a class="btn btn-ghost" href="@AuthUrl("signin")">Sign in to protect this guest</a></div>
+            }
+        }
+        </section>
+    }
+    else if (_member is null)
     {
         <section class="panel join-panel">
             <h2>Pull up a chair.</h2><p>Join once to add your games and vote on what to play.</p>
@@ -29,12 +50,19 @@ else
                 <AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="join" />
                 <label for="member-name">Your name</label><input id="member-name" name="Form.DisplayName" value="@Form?.DisplayName" maxlength="40" autocomplete="nickname" required />
                 <button class="btn btn-primary" type="submit">Join gathering</button>
+                <p class="hint">Your name and contributions are visible to people with this gathering link. Read the <a href="/privacy">privacy notice</a>.</p>
             </form>
+            @if (_gathering.Members.Any(m => m.UserId is null))
+            {
+                <form method="post" @formname="gathering-rejoin" @onsubmit="HandleAsync"><AntiforgeryToken /><label for="existing-guest">Continue as existing guest</label><select id="existing-guest" name="Form.ExistingGuestId" required><option value="">Choose your guest name…</option>@foreach (var guest in _gathering.Members.Where(m => m.UserId is null).OrderBy(m => m.DisplayName)) { <option value="@guest.Id">@guest.DisplayName</option> }</select><button class="btn btn-ghost" type="submit" name="Form.Action" value="rejoin">Continue as this guest</button></form>
+            }
+            <p class="hint">Guest names are shared and unprotected: anyone with this gathering link can resume them.</p><div class="btn-row"><a href="@AuthUrl("signin")">Sign in</a><a href="@AuthUrl("register")">Create account</a></div>
         </section>
     }
     else
     {
         <p class="member-greeting">You're here as <strong>@_member.DisplayName</strong>@(_isHost ? " · You're hosting" : "")</p>
+        @if (_member.UserId is null) { <p class="hint">This guest name is unprotected. Anyone with the gathering link can resume it. <a href="@($"{GatheringUrl}?claim={_member.Id}")">Protect this guest with an account →</a></p> }
     }
     <div class="feedback-region" aria-live="polite">
         @if (_error is not null) { <p class="text-danger feedback" role="alert">@_error</p> }
@@ -48,6 +76,7 @@ else
         }
         else if (_member is not null)
         {
+            var available = _libraryGames.Where(IsAvailable).ToList();
             <p class="section-intro">Choose games you can bring. Each one goes straight onto the shared table.</p>
             <div class="panel add-panel">
                 <form method="post" @formname="gathering-add-game" @onsubmit="HandleAsync" data-enhance>
@@ -59,7 +88,32 @@ else
                     <input type="hidden" name="Form.MaxMinutes" value="@MaxMinutes" />
                     <label for="game-name">Suggest a game you can bring</label>
                     <input id="game-name" name="Form.SearchQuery" value="@SearchQuery" maxlength="200" placeholder="e.g. Cascadia" required />
-                    <div class="suggestion-actions"><button class="btn btn-primary" type="submit" name="Form.Action" value="search-bgg">Search on BGG</button><button class="btn btn-ghost" type="submit" name="Form.Action" value="add-game">Add as text</button></div>
+                    <p class="search-feedback @(_pickerError is not null ? "text-danger" : "")" data-search-feedback role="@(_pickerError is not null ? "alert" : "status")" aria-live="polite">
+                        @if (_pickerError is not null)
+                        {
+                            <span>@_pickerError You can use Add as text with the same name.</span>
+                        }
+                        else if (ActiveSource == "search" && !string.IsNullOrWhiteSpace(SearchQuery))
+                        {
+                            @if (_libraryGames.Count == 0)
+                            {
+                                <span>No matching games for “@SearchQuery”. Check the spelling, try a shorter name, or add as text.</span>
+                            }
+                            else if (available.Count == 0)
+                            {
+                                <span>Matching games are already on the table or excluded by your filters. Try clearing the filters.</span>
+                            }
+                            else
+                            {
+                                <span>@available.Count matching game@(available.Count == 1 ? "" : "s"). <a href="@(Nav.Uri.Split('#')[0] + "#game-results")">View results ↓</a></span>
+                            }
+                        }
+                        else
+                        {
+                            <span>Find covers and game details on BGG, or add just the name.</span>
+                        }
+                    </p>
+                    <div class="suggestion-actions"><button class="btn btn-primary" type="submit" name="Form.Action" value="search-bgg" onclick="if(this.form.checkValidity()){this.form.querySelector('[data-search-feedback]').textContent='Searching BoardGameGeek…';this.form.setAttribute('aria-busy','true');}">Search on BGG</button><button class="btn btn-ghost" type="submit" name="Form.Action" value="add-game">Add as text</button></div>
                 </form>
             </div>
             <section id="choose-games" class="library-browser panel" aria-labelledby="library-title">
@@ -85,16 +139,11 @@ else
                         <div class="interest-actions"><button class="btn btn-ghost btn-sm" type="submit" name="Form.Action" value="filter-games">Apply filters</button><button class="btn btn-ghost btn-sm" type="submit" name="Form.Action" value="clear-filters">Clear filters</button></div>
                     </details>
                 </form>
-                @if (_pickerError is not null)
+                @if (_pickerError is null && HasBrowseSource)
                 {
-                    <p class="text-danger" role="alert">@_pickerError You can use Add as text with the same name above.</p>
-                }
-                else if (HasBrowseSource)
-                {
-                    var available = _libraryGames.Where(IsAvailable).ToList();
                     <p class="available-count">@available.Count games available</p>
                     @if (available.Count == 0) { <p class="hint">No more games match. Try another search or clear the filters.</p> }
-                    <form method="post" @formname="gathering-library-game" @onsubmit="HandleAsync" data-enhance>
+                    <form id="game-results" method="post" @formname="gathering-library-game" @onsubmit="HandleAsync" data-enhance>
                         <AntiforgeryToken />@PickerState<input type="hidden" name="Form.Action" value="add-library-game" />
                         <ul class="candidate-list">
                             @foreach (var game in available)
@@ -156,6 +205,13 @@ else
         {
             <a class="my-votes-link" href="@($"{GatheringUrl}/vote#my-votes")">Review my votes →</a>
         }
+        <details class="voting-progress"><summary>Voting progress · @_gathering.Members.Count people</summary><ul class="history-list">
+            @foreach (var person in _gathering.Members.OrderBy(m => m.DisplayName))
+            {
+                var count = _gathering.Games.Count(g => g.Interests.Any(i => i.MemberId == person.Id));
+                <li><strong>@person.DisplayName @if (person.UserId is not null) { <small>· Account protected</small> }</strong><span>@(_gathering.Games.Count == 0 ? "No games yet" : count == 0 ? "Not started" : count == _gathering.Games.Count ? "All games voted" : $"{count} of {_gathering.Games.Count} voted")</span></li>
+            }
+        </ul></details>
         @if (_isHost)
         {
             <details class="host-options"><summary>Host controls</summary><p class="hint">Close voting when everyone's had their say. Reopen it to add games and collect more votes.</p><form method="post" @formname="gathering-voting-state" @onsubmit="HandleAsync" data-enhance><AntiforgeryToken /><button class="btn btn-ghost" name="Form.Action" value="@(_gathering.IsVotingClosed ? "reopen-voting" : "close-voting")">@(_gathering.IsVotingClosed ? "Reopen voting" : "Close voting")</button></form>
@@ -177,6 +233,7 @@ else
 
 @code {
     [Parameter] public string ShareCode { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "claim")] public Guid? ClaimId { get; set; }
     [SupplyParameterFromQuery(Name = "library")] public Guid? LibraryId { get; set; }
     [SupplyParameterFromQuery(Name = "source")] public string? BrowseSource { get; set; }
     [SupplyParameterFromQuery(Name = "q")] public string? SearchQuery { get; set; }
@@ -187,6 +244,7 @@ else
     [SupplyParameterFromForm] public GatheringForm? Form { get; set; }
     private GatheringView? _gathering;
     private GatheringMemberView? _member;
+    private GatheringMemberView? _claimGuest;
     private Guid? _userId;
     private string? _memberToken;
     private bool _isHost;
@@ -215,11 +273,13 @@ else
         _userId = user?.GetUserId();
         _isHost = _userId is not null && _gathering.CreatedByUserId == _userId;
         _memberToken = HttpContext.Request.Cookies[CookieName];
-        if (_memberToken is not null) _member = await Gatherings.GetMemberAsync(_gathering.Id, _memberToken);
-        if (_member is null && _userId is not null && !string.IsNullOrEmpty(user?.GetUsername()))
+        _claimGuest = _gathering.Members.FirstOrDefault(m => m.Id == ClaimId && m.UserId is null);
+        if (_memberToken is not null) _member = await Gatherings.GetMemberAsync(_gathering.Id, _memberToken, userId: _userId);
+        if (ClaimId is null && (_member is null || _member.UserId != _userId) && _userId is not null && !string.IsNullOrEmpty(user?.GetUsername()))
         {
             _memberToken = NewToken();
-            _member = await Gatherings.JoinAsync(_gathering.Id, user.GetUsername()!, _memberToken, _userId);
+            var displayName = user.GetUsername()!;
+            _member = await Gatherings.JoinAsync(_gathering.Id, displayName[..Math.Min(displayName.Length, 40)], _memberToken, _userId);
             SetMemberCookie();
             _gathering = await Gatherings.GetByShareCodeAsync(ShareCode);
         }
@@ -274,6 +334,14 @@ else
                     Players = MaxMinutes = null;
                     await LoadPickerAsync();
                     return;
+                case "rejoin" or "protect":
+                    if (Form.ExistingGuestId is not Guid guestId) throw new InvalidOperationException("Choose a guest name.");
+                    if (Form.Action == "protect" && _userId is null) throw new InvalidOperationException("Sign in to protect this guest.");
+                    _memberToken = NewToken();
+                    _member = await Gatherings.RejoinGuestAsync(_gathering.Id, guestId, _memberToken, Form.Action == "protect" ? _userId : null);
+                    SetMemberCookie();
+                    Nav.NavigateTo(IsPicker ? $"{GatheringUrl}/games" : GatheringUrl);
+                    return;
                 case "join":
                     _memberToken = NewToken();
                     _member = await Gatherings.JoinAsync(_gathering.Id, Form.DisplayName ?? string.Empty, _memberToken, _userId);
@@ -281,7 +349,7 @@ else
                     Nav.NavigateTo(IsPicker ? $"{GatheringUrl}/games" : GatheringUrl);
                     return;
                 case "add-game" when _member is not null && _memberToken is not null:
-                    await Gatherings.AddGameAsync(_gathering.Id, _memberToken, new GameCandidate(Form.SearchQuery ?? string.Empty));
+                    await Gatherings.AddGameAsync(_gathering.Id, _memberToken, new GameCandidate(Form.SearchQuery ?? string.Empty), userId: _userId);
                     _notice = "Game added to the table. Friends can now vote on it.";
                     SearchQuery = null;
                     await LoadPickerAsync();
@@ -290,7 +358,7 @@ else
                     var candidate = _libraryGames.FirstOrDefault(g => g.BggGameId == Form.BggGameId && IsAvailable(g))
                         ?? throw new InvalidOperationException("Choose a game from your library first.");
                     if (ActiveSource == "search") candidate = await Libraries.GetGameAsync(candidate.BggGameId);
-                    await Gatherings.AddGameAsync(_gathering.Id, _memberToken, new GameCandidate(candidate.Name, candidate.BggGameId, candidate.ImageUrl, candidate.ThumbnailUrl));
+                    await Gatherings.AddGameAsync(_gathering.Id, _memberToken, new GameCandidate(candidate.Name, candidate.BggGameId, candidate.ImageUrl, candidate.ThumbnailUrl), userId: _userId);
                     _notice = "Game added to this gathering.";
                     break;
                 case "remove-game" when _member is not null && _memberToken is not null && Form.GameId is Guid removeId:
@@ -326,6 +394,8 @@ else
     private string ActiveSource => BrowseSource == "search" || LibraryId is null ? "search" : "library";
     private bool HasBrowseSource => ActiveSource == "search" ? !string.IsNullOrWhiteSpace(SearchQuery) : LibraryId is not null;
 
+    private string AuthUrl(string page) => $"/{page}?returnUrl={Uri.EscapeDataString(GatheringUrl + (ClaimId is Guid id ? $"?claim={id}" : ""))}";
+
     private bool IsAvailable(BggCandidateGame game)
     {
         if (_gathering!.Games.Any(g => g.BggGameId == game.BggGameId || string.Equals(g.Name.Trim(), game.Name.Trim(), StringComparison.OrdinalIgnoreCase))) return false;
@@ -348,6 +418,7 @@ else
     public sealed class GatheringForm
     {
         public string? Action { get; set; }
+        public Guid? ExistingGuestId { get; set; }
         public bool HasPickerState { get; set; }
         public Guid? LibraryId { get; set; }
         public string? BrowseSource { get; set; }

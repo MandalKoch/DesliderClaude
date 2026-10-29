@@ -10,7 +10,8 @@
 @if (_status == Status.NotFound)
 {
     <h1>Invite not found.</h1>
-    <p>That invite link doesn't match anything. Ask the host for a fresh one.</p>
+    <p>That invite link doesn't match anything. It may require its owner to sign in.</p>
+    <p><a href="@($"/signin?returnUrl={Uri.EscapeDataString($"/night/{ShareCode}")}")">Sign in with your account →</a></p>
     <p><a href="/">← Back home</a></p>
 }
 else if (_status == Status.WrongNight)
@@ -34,13 +35,13 @@ else if (_status == Status.WrongNight)
         var night = await GameNights.GetByShareCodeAsync(ShareCode);
         if (night is null) { _status = Status.NotFound; return; }
 
-        var progress = await Voting.GetProgressAsync(VoterToken);
+        var progress = await Voting.GetProgressAsync(VoterToken, userId: HttpContext.User.GetUserId());
         if (progress is null) { _status = Status.NotFound; return; }
         if (progress.GameNightId != night.Id) { _status = Status.WrongNight; return; }
 
         // Adopt the voter identity by setting the per-night cookie, then send
         // them into the swipe loop just like a normal join.
-        HttpContext.Response.Cookies.Append(VoterCookie.Name(ShareCode), VoterToken, VoterCookie.Options);
+        HttpContext.Response.Cookies.Append(VoterCookie.Name(ShareCode), VoterToken, VoterCookie.Options(HttpContext.Request.IsHttps));
         Nav.NavigateTo($"/night/{ShareCode}/swipe");
     }
 

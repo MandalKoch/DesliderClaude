@@ -1,2 +1,4 @@
 /* All layout styles live in wwwroot/app.css so they can be tweaked alongside
    the rest of the design system. This file intentionally left empty. */
+
+.footer-meta a { display: inline-flex; align-items: center; min-height: 44px; }

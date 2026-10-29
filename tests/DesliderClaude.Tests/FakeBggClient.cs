@@ -14,14 +14,16 @@ public sealed class FakeBggClient : IBggClient
     public Dictionary<string, IReadOnlyList<int>> Searches { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, IReadOnlyList<int>> SearchResults => Searches;
     public Dictionary<string, Exception> SearchFailures { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, Task> SearchDelays { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> SearchCalls { get; } = new();
     public List<IReadOnlyList<int>> FetchThingsCalls { get; } = new();
 
-    public Task<IReadOnlyList<int>> SearchAsync(string query, CancellationToken ct = default)
+    public async Task<IReadOnlyList<int>> SearchAsync(string query, CancellationToken ct = default)
     {
         SearchCalls.Add(query);
+        if (SearchDelays.TryGetValue(query, out var delay)) await delay.WaitAsync(ct);
         if (SearchFailures.TryGetValue(query, out var error)) throw error;
-        return Task.FromResult(Searches.TryGetValue(query, out var ids) ? ids : (IReadOnlyList<int>)Array.Empty<int>());
+        return Searches.TryGetValue(query, out var ids) ? ids : Array.Empty<int>();
     }
 
     public Task<BggGeekListFetch> FetchGeekListAsync(int geekListId, CancellationToken ct = default)

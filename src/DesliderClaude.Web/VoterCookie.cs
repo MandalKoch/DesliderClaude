@@ -6,11 +6,11 @@ internal static class VoterCookie
 {
     public static string Name(string shareCode) => $"deslider-voter-{shareCode}";
 
-    // Not HttpOnly: no sensitive privileges attached to this token, and leaving it readable
-    // keeps the door open if we later want to read it client-side without another round trip.
-    public static CookieOptions Options => new()
+    public static CookieOptions Options(bool isHttps) => new()
     {
         IsEssential = true,
+        HttpOnly = true,
+        Secure = isHttps,
         MaxAge = TimeSpan.FromDays(60),
         SameSite = SameSiteMode.Lax,
         Path = "/",

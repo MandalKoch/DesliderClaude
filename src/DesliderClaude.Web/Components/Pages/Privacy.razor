@@ -1,0 +1,77 @@
+@page "/privacy"
+
+<PageTitle>Privacy — DesliderClaude</PageTitle>
+
+<article class="privacy-page">
+    <a class="back-link" href="/">← Your table</a>
+    <header>
+        <span class="eyebrow">Your information at the table</span>
+        <h1>Privacy.</h1>
+        <p class="intro">What DesliderClaude stores, what your friends can see, and which services receive information.</p>
+    </header>
+
+    <aside class="draft-notice" aria-labelledby="draft-title">
+        <h2 id="draft-title">Draft — details still to be completed</h2>
+        <p>This notice describes the app's current features. The operator's identity, contact address, applicable legal bases, retention periods, and hosting arrangements still need to be confirmed before this becomes a completed privacy notice.</p>
+    </aside>
+
+    <section aria-labelledby="operator-title">
+        <h2 id="operator-title">Who operates this app?</h2>
+        <p><strong>Operator/contact details still to be completed.</strong> The app is operated by a private individual based in Germany. The operator's name and privacy contact will appear here. A working channel for privacy requests has not yet been specified.</p>
+    </section>
+
+    <section aria-labelledby="information-title">
+        <h2 id="information-title">Information used by the app</h2>
+        <ul>
+            <li><strong>Accounts:</strong> username, an internal identifier, creation time, and a salted password hash. The password itself is not stored. These details support sign-in and access to your nights, gatherings, and saved libraries.</li>
+            <li><strong>Game nights and gatherings:</strong> names and identifiers, the host account, participant display names, optional account links, game suggestions, who brings each game, votes, and played history. Records include timestamps where needed for these features.</li>
+            <li><strong>Saved BoardGameGeek libraries:</strong> the GeekList identifier or BGG username you enter, import labels and refresh times, and cached game details. These allow you to reuse and refresh your game lists.</li>
+            <li><strong>Technical operation:</strong> web requests necessarily expose connection information such as IP addresses to the hosting service. Application logs include events such as account creation and sign-in success or failure, with usernames or internal identifiers where relevant. Hosting log and backup retention still needs to be confirmed.</li>
+        </ul>
+        <p>The legal basis for each processing purpose is still to be documented by the operator. This draft does not treat using the app as blanket consent.</p>
+    </section>
+
+    <section aria-labelledby="sharing-title">
+        <h2 id="sharing-title">What other people can see</h2>
+        <p>Night and gathering links are shareable. People with a link can see the information shown on that page, including participant names, games, bring assignments, interest totals, and results. Hosts can manage participants and view voting progress. Do not enter information you would not want the group to see.</p>
+        <p>Your saved library management is restricted to your account. Games you add from a library become part of the shared night or gathering. Unprotected guest identities can be selected by anyone with the night or gathering link, including access to change that guest's votes. You can explicitly link your guest identity to an account to require sign-in for future access. Registering an account alone does not claim an existing guest.</p>
+        <p>Invitation and vote-restore links that contain a personal token act as credentials for unprotected guests. Keep those links private. Returning as a guest replaces its previous session token; previous cookies and restore links may stop working. Account-protected participants additionally require sign-in to the owning account.</p>
+    </section>
+
+    <section aria-labelledby="cookies-title">
+        <h2 id="cookies-title">Cookies and returning to your vote</h2>
+        <p>These cookies support sign-in, participation, and form security. The app does not set advertising or analytics cookies.</p>
+        <div class="cookie-table-wrap">
+            <table>
+                <caption>Cookies used for the features you choose</caption>
+                <thead><tr><th scope="col">Cookie</th><th scope="col">Purpose</th><th scope="col">Lifetime</th></tr></thead>
+                <tbody>
+                    <tr><th scope="row"><code>deslider-auth</code></th><td>Signs you into your account.</td><td>Browser session. Its authentication ticket has a 30-day sliding validity.</td></tr>
+                    <tr><th scope="row"><code>deslider-voter-…</code></th><td>Recognises your participation in a particular game night.</td><td>60 days from being set.</td></tr>
+                    <tr><th scope="row"><code>deslider-gathering-…</code></th><td>Recognises your membership in a gathering.</td><td>60 days from being set.</td></tr>
+                    <tr><th scope="row"><code>.AspNetCore.Antiforgery.…</code></th><td>Helps protect forms against forged requests.</td><td>Browser session.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p>Browsers may restore session cookies when restoring a browsing session. You can delete cookies in your browser. Signing out clears the app's account and participant cookies. Deleting or expiring cookies does not delete the votes or other records stored on the server. You can return by selecting an unprotected guest, or by signing in to the account that protects your identity.</p>
+    </section>
+
+    <section aria-labelledby="providers-title">
+        <h2 id="providers-title">Hosting and external services</h2>
+        <p><strong>Fly.io:</strong> the app is configured to run in Frankfurt, Germany. Fly.io, Inc. is a US company; choosing Frankfurt does not establish that every support, logging, or other processing activity stays in the EU. The operator still needs to confirm the applicable data processing agreement and any international transfer safeguards. See <a href="https://fly.io/legal/privacy-policy/" rel="external">Fly.io's privacy statement</a> and <a href="https://fly.io/documents" rel="external">data processing agreement information</a>.</p>
+        <p><strong>BoardGameGeek:</strong> searches and library imports send the search text, BGG username, GeekList identifier, or game identifiers to BGG from this server. Cover images load directly in your browser from BGG's image hosting, which receives your IP address and normal request information. Image requests omit the referring page address. Opening a BGG link takes you to that external service.</p>
+        <p><strong>Fonts:</strong> fonts are served by this app, so displaying text does not require a request to Google Fonts.</p>
+    </section>
+
+    <section aria-labelledby="retention-title">
+        <h2 id="retention-title">How long records remain</h2>
+        <p>The app currently has no automatic age-based deletion of accounts, votes, nights, gatherings, or saved library records. Closing voting or allowing a cookie to expire does not erase those records. Participant tokens currently have no automatic server-side age expiry. Deleting an imported library removes that import; games already added to nights or gatherings and shared cached game metadata can remain.</p>
+        <p><strong>Retention policy still to be completed:</strong> the operator needs to specify how long each category is needed, how deletion requests are handled, and when logs and backups expire.</p>
+    </section>
+
+    <section aria-labelledby="rights-title">
+        <h2 id="rights-title">Your privacy choices and rights</h2>
+        <p>Where the GDPR applies, you may have rights to access, correct, erase, or receive your personal data, restrict processing, or object, depending on the circumstances. You may also complain to a competent data protection authority. See the <a href="https://www.edpb.europa.eu/sme/be-compliant/respect-individuals-rights_en" rel="external">European Data Protection Board's explanation of these rights</a>.</p>
+        <p><strong>Request contact still to be completed.</strong> The operator must provide a working contact and clarify the applicable rights and complaint authority. Do not send passwords, invitation tokens, or vote-restore links in a public request.</p>
+    </section>
+</article>

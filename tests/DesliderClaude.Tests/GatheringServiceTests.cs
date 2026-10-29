@@ -86,7 +86,7 @@ public class GatheringServiceTests
 
         Assert.That(same.Id, Is.EqualTo(first.Id));
         Assert.That(second.Id, Is.EqualTo(first.Id));
-        Assert.That(await _service.GetMemberAsync(one.Id, "second-device"), Is.Not.Null);
+        Assert.That(await _service.GetMemberAsync(one.Id, "second-device", _host), Is.Not.Null);
         Assert.That(await _service.GetMemberAsync(two.Id, "second-device"), Is.Null);
         Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.AddGameAsync(two.Id, "second-device", Candidate("Dune")));
         var listed = await _service.ListForUserAsync(_host);
@@ -117,8 +117,8 @@ public class GatheringServiceTests
     {
         var gathering = await _service.CreateAsync("Weekend", _host);
         await _service.JoinAsync(gathering.Id, "Host", "host-session", _host);
-        await _service.AddGameAsync(gathering.Id, "host-session", Candidate("Dune"));
-        await _service.AddGameAsync(gathering.Id, "host-session", Candidate("Cascadia"));
+        await _service.AddGameAsync(gathering.Id, "host-session", Candidate("Dune"), _host);
+        await _service.AddGameAsync(gathering.Id, "host-session", Candidate("Cascadia"), _host);
         var games = (await _service.GetByShareCodeAsync(gathering.ShareCode))!.Games;
         var ids = games.Select(x => x.Id).ToArray();
         foreach (var id in ids)

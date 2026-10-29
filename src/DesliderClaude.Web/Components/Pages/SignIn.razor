@@ -23,7 +23,7 @@
 
         <div class="btn-row">
             <button type="submit" class="btn btn-primary">Sign in →</button>
-            <a class="btn btn-ghost" href="/register">Create account</a>
+            <a class="btn btn-ghost" href="@($"/register?returnUrl={Uri.EscapeDataString(AuthExtensions.SafeReturnUrl(ReturnUrl))}")">Create account</a>
         </div>
     </form>
 
@@ -60,13 +60,8 @@
         }
 
         await HttpContext.SignInUserAsync(user);
-        Nav.NavigateTo(SafeReturnUrl(ReturnUrl));
+        Nav.NavigateTo(AuthExtensions.SafeReturnUrl(ReturnUrl));
     }
-
-    private static string SafeReturnUrl(string? candidate)
-        => !string.IsNullOrEmpty(candidate) && candidate.StartsWith('/') && !candidate.StartsWith("//")
-            ? candidate
-            : "/";
 
     public sealed class SignInFormModel
     {

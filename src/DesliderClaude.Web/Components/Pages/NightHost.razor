@@ -132,7 +132,8 @@ else
                                 <button type="submit" name="Form.RemoveVoterId" value="@v.VoterId"
                                         class="btn btn-ghost btn-sm voter-remove-btn"
                                         title="Remove @v.DisplayName and all their votes"
-                                        onclick="return confirm('Remove @v.DisplayName and delete all their votes?');">
+                                        data-confirm-message="@($"Remove {v.DisplayName} and delete all their votes?")"
+                                        onclick="return confirm(this.dataset.confirmMessage);">
                                     ✕
                                 </button>
                             </div>

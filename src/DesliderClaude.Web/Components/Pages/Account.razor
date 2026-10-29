@@ -110,6 +110,9 @@ else
         try
         {
             await Users.ChangePasswordAsync(_user.Id, Pwd?.Current ?? string.Empty, Pwd?.New ?? string.Empty);
+            _user = await Users.GetByIdAsync(_user.Id);
+            if (_user is not null && HttpContext is not null)
+                await HttpContext.SignInUserAsync(_user);
             _pwdOk = true;
         }
         catch (InvalidOperationException ex)

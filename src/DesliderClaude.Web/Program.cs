@@ -30,7 +30,12 @@ builder.Services
         options.SlidingExpiration = true;
         options.LoginPath = "/signin";
         options.AccessDeniedPath = "/signin";
+        options.Events.OnValidatePrincipal = AuthExtensions.ValidatePrincipalAsync;
     });
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+});
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 
