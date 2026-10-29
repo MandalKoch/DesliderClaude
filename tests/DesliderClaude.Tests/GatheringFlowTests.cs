@@ -235,15 +235,16 @@ public sealed class GatheringFlowTests : PageTest
         }
     }
 
-    [Test]
-    public async Task Guests_can_search_BGG_and_keep_manual_entry_when_lookup_fails()
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Guests_can_search_BGG_and_keep_manual_entry_when_lookup_fails(bool javaScriptEnabled)
     {
         _app.Bgg.Searches["guest game"] = new[] { 300_001, 300_002 };
         _app.Bgg.Things[300_001] = Thing(300_001, "Island Quest");
         _app.Bgg.Things[300_002] = Thing(300_002, "Island Friends");
         _app.Bgg.SearchFailures["lookup offline"] = new HttpRequestException("BGG unavailable");
         var gatheringUrl = await CreateGatheringAsync("Search weekend");
-        await using var guestContext = await Browser.NewContextAsync(new() { BaseURL = _app.ServerUrl, ViewportSize = new() { Width = 390, Height = 844 } });
+        await using var guestContext = await Browser.NewContextAsync(new() { BaseURL = _app.ServerUrl, ViewportSize = new() { Width = 390, Height = 844 }, JavaScriptEnabled = javaScriptEnabled });
         var guest = await guestContext.NewPageAsync();
         await guest.GotoAsync(gatheringUrl);
         await guest.GetByLabel("Your name", new() { Exact = true }).FillAsync("Search guest");
